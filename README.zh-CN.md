@@ -262,6 +262,7 @@ wml-update --config updater.json serve --json
 - [自托管更新](docs/self-hosting.md)
 - [GitHub Releases](docs/github-releases.md)
 - [安全模型](docs/security.md)
+- [测试指南](docs/testing.md)
 - [故障排查](docs/troubleshooting.md)
 - [架构决策记录](docs/adr)
 

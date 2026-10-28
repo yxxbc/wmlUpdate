@@ -286,6 +286,7 @@ not a user home directory.
 - [Self-hosting updates](docs/self-hosting.md)
 - [GitHub Releases](docs/github-releases.md)
 - [Security model](docs/security.md)
+- [Testing](docs/testing.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Architecture decision records](docs/adr)
 

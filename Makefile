@@ -6,8 +6,8 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X $(MODULE)/internal/buildinfo.Version=$(VERSION) -X $(MODULE)/internal/buildinfo.Commit=$(COMMIT) -X $(MODULE)/internal/buildinfo.Date=$(DATE)
 
-.PHONY: all build test race vet check fmt lint clean dist install snapshot \
-        cross-windows cross-darwin cross-linux
+.PHONY: all build test e2e race vet check fmt lint clean dist install snapshot \
+        cross-windows cross-darwin cross-linux docs
 
 all: check build
 
@@ -16,6 +16,9 @@ build:
 
 test:
 	go test ./... -count=1
+
+e2e:
+	go run ./examples/playground
 
 race:
 	go test -race ./... -count=1

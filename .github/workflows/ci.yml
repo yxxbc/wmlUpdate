@@ -38,6 +38,8 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test ./... -count=1
+      - name: SDK end-to-end playground
+        run: go run ./examples/playground
       - name: Race
         if: runner.os == 'Linux'
         run: go test -race ./... -count=1
