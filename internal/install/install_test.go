@@ -22,8 +22,8 @@ func loadConfig(t *testing.T, target string, extra string) *config.Config {
 	  "app_id": "com.example.installtest",
 	  "current_version": "1.0.0",
 	  "source": {"type": "static", "manifest_url": "https://updates.example.test/manifest.json"},
-	  "install": {"type": "directory", "path": "` + target + `", "preserve": ["data/**"], "keep_backups": 1` + extra + `},
-	  "state_dir": "` + filepath.Join(dir, "state") + `"
+	  "install": {"type": "directory", "path": "` + filepath.ToSlash(target) + `", "preserve": ["data/**"], "keep_backups": 1` + extra + `},
+	  "state_dir": "` + filepath.ToSlash(filepath.Join(dir, "state")) + `"
 	}`
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
@@ -121,8 +121,8 @@ func TestFileInstallRollback(t *testing.T) {
 	body := `{
 	  "app_id": "com.example.filet",
 	  "source": {"type": "static", "manifest_url": "https://updates.example.test/manifest.json"},
-	  "install": {"type": "file", "path": "` + target + `", "file_mode": "0755"},
-	  "state_dir": "` + filepath.Join(root, "state") + `"
+	  "install": {"type": "file", "path": "` + filepath.ToSlash(target) + `", "file_mode": "0755"},
+	  "state_dir": "` + filepath.ToSlash(filepath.Join(root, "state")) + `"
 	}`
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)

@@ -111,9 +111,9 @@ func newFixture(t *testing.T) *fixture {
 	  "current_version": "1.0.0",
 	  "source": {"type": "static", "manifest_url": "` + server.URL + `/manifest.json"},
 	  "asset_rules": [{"os": "` + p.OS + `", "arch": "` + p.Arch + `", "match": "app.zip", "format": "zip"}],
-	  "install": {"type": "directory", "path": "` + target + `", "preserve": ["data/**"], "keep_backups": 1},
-	  "state_dir": "` + filepath.Join(dir, "state") + `",
-	  "security": {"public_key_file": "` + pubPath + `"}
+	  "install": {"type": "directory", "path": "` + filepath.ToSlash(target) + `", "preserve": ["data/**"], "keep_backups": 1},
+	  "state_dir": "` + filepath.ToSlash(filepath.Join(dir, "state")) + `",
+	  "security": {"public_key_file": "` + filepath.ToSlash(pubPath) + `"}
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgBody), 0o600); err != nil {
 		t.Fatal(err)

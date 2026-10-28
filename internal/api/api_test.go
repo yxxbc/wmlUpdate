@@ -45,7 +45,7 @@ func apiFixture(t *testing.T) (*Server, string) {
 	  "current_version": "1.0.0",
 	  "source": {"type": "static", "manifest_url": "` + src.URL + `/manifest.json"},
 	  "install": {"type": "external"},
-	  "state_dir": "` + filepath.Join(dir, "state") + `"
+	  "state_dir": "` + filepath.ToSlash(filepath.Join(dir, "state")) + `"
 	}`
 	if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
 		t.Fatal(err)

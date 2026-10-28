@@ -69,7 +69,7 @@ func TestStaticSignedManifest(t *testing.T) {
 	defer server.Close()
 	cfg := writeCfg(t, dir,
 		`{"type":"static","manifest_url":"`+server.URL+`/manifest.json"}`,
-		`,"security":{"public_key_file":"`+pubPath+`"}`)
+		`,"security":{"public_key_file":"`+filepath.ToSlash(pubPath)+`"}`)
 	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
 	p, err := New(cfg, client, t.TempDir())
 	if err != nil {
@@ -103,7 +103,7 @@ func TestStaticRejectsTamperedManifest(t *testing.T) {
 	}))
 	defer server.Close()
 	cfg := writeCfg(t, dir, `{"type":"static","manifest_url":"`+server.URL+`/manifest.json"}`,
-		`,"security":{"public_key_file":"`+pubPath+`"}`)
+		`,"security":{"public_key_file":"`+filepath.ToSlash(pubPath)+`"}`)
 	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
 	p, _ := New(cfg, client, t.TempDir())
 	if _, err := p.Fetch(context.Background()); err == nil {
@@ -168,7 +168,7 @@ func TestGitHubReleaseSelectionAndChecksums(t *testing.T) {
 	}
 	cfg := writeCfg(t, dir,
 		`{"type":"github","owner":"acme","repo":"app","api_base":"`+server.URL+`"}`,
-		`,"security":{"public_key_file":"`+pubPath+`"}`)
+		`,"security":{"public_key_file":"`+filepath.ToSlash(pubPath)+`"}`)
 	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
 	p, err := New(cfg, client, t.TempDir())
 	if err != nil {
@@ -224,7 +224,7 @@ func TestGitHubRejectsBadChecksumsSignature(t *testing.T) {
 	defer server.Close()
 	baseURL = server.URL
 	cfg := writeCfg(t, dir, `{"type":"github","owner":"acme","repo":"app","api_base":"`+server.URL+`"}`,
-		`,"security":{"public_key_file":"`+pubPath+`"}`)
+		`,"security":{"public_key_file":"`+filepath.ToSlash(pubPath)+`"}`)
 	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
 	p, _ := New(cfg, client, t.TempDir())
 	if _, err := p.Fetch(context.Background()); err == nil {
