@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://yxxbc.github.io/wmlUpdate/dev/security/">
       
       
-        <link rel="prev" href="../self-hosting/">
+        <link rel="prev" href="../frequent-releases/">
       
       
         <link rel="next" href="../release-signing/">
@@ -506,6 +506,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../frequent-releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frequent releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -860,10 +887,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
             
   
   
@@ -881,8 +908,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1530,6 +1557,10 @@ hashes are under your control.</p>
 Ad-hoc signing can make an unsigned bundle launch, but it <strong>invalidates Developer
 ID signatures and notarization</strong>. Never enable it for a notarized distribution.
 Both options default off and only run when the updater runs on macOS.</p>
+<p>For a signed installed <code>.app</code>, the updater verifies the staged bundle with
+<code>codesign --verify --deep --strict</code> and requires the same <code>TeamIdentifier</code>.
+<code>allow_signer_change</code> exists for an intentional certificate/team migration; do
+not use it to bypass an unexpected signer change.</p>
 <h3 id="windows-helper">Windows helper<a class="headerlink" href="#windows-helper" title="Permanent link">&para;</a></h3>
 <p><code>--defer</code> copies the updater executable to the state directory, not the target.
 The helper waits for selected PIDs, acquires the per-app lock, applies from the
@@ -1631,7 +1662,7 @@ redirect or replace updates.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../self-hosting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Self-hosting">
+          <a href="../frequent-releases/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Frequent releases">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1641,7 +1672,7 @@ redirect or replace updates.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Self-hosting
+                Frequent releases
               </div>
             </div>
           </a>
