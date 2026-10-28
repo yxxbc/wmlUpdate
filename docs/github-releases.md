@@ -126,6 +126,49 @@ For public repositories, a token is optional but strongly recommended to avoid
 the 60 requests/hour anonymous limit. The updater surfaces rate-limit errors with
 guidance.
 
+## Mirrors and automatic failover
+
+GitHub API/asset access can be blocked independently. Use an ordered chain with
+static mirrors for metadata and asset templates for downloads:
+
+```json
+{
+  "source": {
+    "type": "chain",
+    "sources": [
+      {
+        "type": "github",
+        "owner": "acme",
+        "repo": "myapp",
+        "tag_prefix": "v",
+        "token_env": "GITHUB_TOKEN",
+        "asset_mirrors": [
+          "https://ghproxy.net/https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}",
+          "https://gitee.com/{owner}/{repo}/releases/download/{tag}/{asset}"
+        ]
+      },
+      {
+        "type": "static",
+        "manifest_urls": [
+          "https://cdn.jsdelivr.net/gh/acme/myapp@main/updates/manifest.json",
+          "https://gitee.com/acme/myapp/raw/main/updates/manifest.json",
+          "https://updates.example.com/stable/manifest.json"
+        ]
+      }
+    ]
+  }
+}
+```
+
+Metadata is tried in order. After a successful check, the artifact tries its
+original URL, configured asset mirrors, and same-version assets from the other
+chain sources. Every fallback must match the checked SHA-256; mirrors cannot
+change the version or bytes. Mirrors do not receive GitHub tokens or source
+headers.
+
+See [configuration](configuration.md#chain-automatic-failover) for placeholders
+and first-success semantics.
+
 ## Network allowlist
 
 If you set `security.allowed_hosts`, include every host involved in metadata and

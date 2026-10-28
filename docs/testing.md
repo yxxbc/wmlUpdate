@@ -16,7 +16,8 @@ This runs:
 
 - strict SemVer, config, manifest and signing tests
 - archive traversal, symlink, hardlink and expansion defenses
-- source discovery for GitHub Releases and signed static manifests
+- source discovery for GitHub Releases, static mirrors, ordered chains and
+  download failover
 - resumable downloads, checksums and HTTP policy
 - transactional directory/file installs, backups, recovery and rollback
 - the public SDK and local HTTP API

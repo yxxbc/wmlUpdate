@@ -87,3 +87,55 @@ func TestLoadRejectsUnsetEnv(t *testing.T) {
 		t.Fatalf("expected missing env error, got %v", err)
 	}
 }
+
+func TestLoadChainMirrorsProxyAndMacOS(t *testing.T) {
+	t.Setenv("TEST_PROXY", "http://127.0.0.1:7890")
+	dir := t.TempDir()
+	path := writeConfig(t, dir, `{
+	  "app_id": "com.example.chain",
+	  "source": {
+	    "type": "chain",
+	    "sources": [
+	      {"type": "github", "owner": "acme", "repo": "app", "asset_mirrors": ["https://ghproxy.net/{url}"]},
+	      {"type": "static", "manifest_urls": ["https://a.example/manifest.json", "https://b.example/manifest.json"]}
+	    ]
+	  },
+	  "install": {
+	    "type": "directory",
+	    "path": "app",
+	    "macos": {"remove_quarantine": true, "ad_hoc_sign": true}
+	  },
+	  "download": {"proxy": "${TEST_PROXY}"}
+	}`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Source.Type != "chain" || len(cfg.Source.Sources) != 2 {
+		t.Fatalf("source = %+v", cfg.Source)
+	}
+	if len(cfg.Source.Sources[1].ManifestURLs) != 2 || cfg.Source.Sources[1].ManifestURL != "https://a.example/manifest.json" {
+		t.Fatalf("static mirrors = %+v", cfg.Source.Sources[1])
+	}
+	if len(cfg.Source.Sources[0].AssetMirrors) != 1 {
+		t.Fatalf("asset mirrors = %+v", cfg.Source.Sources[0].AssetMirrors)
+	}
+	if cfg.Download.Proxy != "http://127.0.0.1:7890" {
+		t.Fatalf("proxy = %q", cfg.Download.Proxy)
+	}
+	if !cfg.Install.MacOS.RemoveQuarantine || !cfg.Install.MacOS.AdHocSign {
+		t.Fatalf("macos config = %+v", cfg.Install.MacOS)
+	}
+}
+
+func TestLoadRejectsInvalidChain(t *testing.T) {
+	dir := t.TempDir()
+	path := writeConfig(t, dir, `{
+	  "app_id": "com.example.chain",
+	  "source": {"type": "chain", "sources": [{"type": "chain", "sources": []}]},
+	  "install": {"type": "external"}
+	}`)
+	if _, err := Load(path); err == nil {
+		t.Fatal("nested chain was accepted")
+	}
+}

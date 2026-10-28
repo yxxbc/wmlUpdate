@@ -149,3 +149,20 @@ func TestParseRetryAfter(t *testing.T) {
 		t.Fatalf("zero Retry-After = %v", got)
 	}
 }
+
+func TestExplicitProxy(t *testing.T) {
+	var seenHost string
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenHost = r.Host
+		_, _ = w.Write([]byte("via proxy"))
+	}))
+	defer proxy.Close()
+	client := NewClient(5*time.Second, Policy{Proxy: proxy.URL, AllowInsecure: true})
+	body, _, status, err := GetBytes(context.Background(), client, "http://upstream.invalid/check", nil, 1<<20, 0)
+	if err != nil || status != http.StatusOK || string(body) != "via proxy" {
+		t.Fatalf("proxy request: body=%q status=%d err=%v", body, status, err)
+	}
+	if seenHost != "upstream.invalid" {
+		t.Fatalf("proxy saw host %q", seenHost)
+	}
+}

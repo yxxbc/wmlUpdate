@@ -46,7 +46,11 @@ type Config struct {
 
 // SourceConfig describes where releases are discovered and downloaded.
 type SourceConfig struct {
-	Type string `json:"type"` // github | static
+	Type string `json:"type"` // github | static | chain
+
+	// Chain: sources are tried in order. A source that fails to return valid
+	// metadata falls through to the next source.
+	Sources []SourceConfig `json:"sources,omitempty"`
 
 	// GitHub
 	Owner             string `json:"owner,omitempty"`
@@ -57,8 +61,14 @@ type SourceConfig struct {
 	IncludePrerelease bool   `json:"include_prerelease,omitempty"`
 
 	// Static self-hosted manifest
-	ManifestURL string            `json:"manifest_url,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
+	ManifestURL  string            `json:"manifest_url,omitempty"`
+	ManifestURLs []string          `json:"manifest_urls,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+
+	// Asset mirrors are URL templates tried when the primary asset download
+	// fails. Placeholders: {url}, {owner}, {repo}, {tag}, {version}, {asset},
+	// {name}, {os}, {arch}.
+	AssetMirrors []string `json:"asset_mirrors,omitempty"`
 }
 
 // AssetRule selects a release asset for a platform. Rules are evaluated in
@@ -89,6 +99,20 @@ type InstallConfig struct {
 
 	RelaunchPath string   `json:"relaunch_path,omitempty"`
 	RelaunchArgs []string `json:"relaunch_args,omitempty"`
+
+	MacOS MacOSConfig `json:"macos,omitempty"`
+}
+
+// MacOSConfig controls optional post-install metadata handling on macOS.
+type MacOSConfig struct {
+	// RemoveQuarantine removes com.apple.quarantine recursively from the target.
+	// This bypasses Gatekeeper's first-launch check; enable only for updates
+	// verified by this updater.
+	RemoveQuarantine bool `json:"remove_quarantine,omitempty"`
+	// AdHocSign force-signs the target with an ad-hoc signature. This can make
+	// unsigned bundles launch, but destroys Developer ID signatures and
+	// notarization; use only for unsigned distributions.
+	AdHocSign bool `json:"ad_hoc_sign,omitempty"`
 }
 
 // SecurityConfig controls supply-chain verification and network boundaries.
@@ -107,6 +131,9 @@ type DownloadConfig struct {
 	MaxBytes int64    `json:"max_bytes,omitempty"`
 	Timeout  Duration `json:"timeout,omitempty"`
 	Retries  int      `json:"retries,omitempty"`
+	// Proxy overrides the standard environment proxy. Supports http, https,
+	// socks5 and socks5h URLs.
+	Proxy string `json:"proxy,omitempty"`
 }
 
 // Duration is a time.Duration encoded as a JSON string such as "15m".
@@ -249,49 +276,8 @@ func (c *Config) finalize() error {
 }
 
 func (c *Config) finalizeSource() error {
-	c.Source.Type = strings.ToLower(strings.TrimSpace(c.Source.Type))
-	switch c.Source.Type {
-	case "github":
-		if c.Source.Owner == "" || c.Source.Repo == "" {
-			return errors.New("source.owner and source.repo are required for GitHub sources")
-		}
-		if c.Source.ManifestURL != "" {
-			return errors.New("source.manifest_url is only valid for static sources")
-		}
-		if c.Source.APIBase == "" {
-			c.Source.APIBase = "https://api.github.com"
-		}
-		u, err := url.Parse(c.Source.APIBase)
-		if err != nil || u.Scheme == "" || u.Host == "" {
-			return fmt.Errorf("invalid source.api_base %q", c.Source.APIBase)
-		}
-		c.Source.APIBase = strings.TrimRight(c.Source.APIBase, "/")
-	case "static":
-		if c.Source.ManifestURL == "" {
-			return errors.New("source.manifest_url is required for static sources")
-		}
-		expanded, err := expandEnv(c.Source.ManifestURL)
-		if err != nil {
-			return fmt.Errorf("source.manifest_url: %w", err)
-		}
-		c.Source.ManifestURL = expanded
-		u, err := url.Parse(expanded)
-		if err != nil || u.Scheme != "http" && u.Scheme != "https" || u.Host == "" {
-			return fmt.Errorf("invalid source.manifest_url %q", expanded)
-		}
-		if len(c.Source.Headers) > 0 {
-			headers := make(map[string]string, len(c.Source.Headers))
-			for k, v := range c.Source.Headers {
-				ev, err := expandEnv(v)
-				if err != nil {
-					return fmt.Errorf("source.headers[%s]: %w", k, err)
-				}
-				headers[k] = ev
-			}
-			c.Source.Headers = headers
-		}
-	default:
-		return fmt.Errorf("source.type must be github or static, got %q", c.Source.Type)
+	if err := finalizeSourceConfig(&c.Source, "source", 0); err != nil {
+		return err
 	}
 
 	seen := make(map[string]bool, len(c.AssetRules))
@@ -325,6 +311,122 @@ func (c *Config) finalizeSource() error {
 			return fmt.Errorf("asset_rules[%d] duplicates an earlier rule", i)
 		}
 		seen[key] = true
+	}
+	return nil
+}
+
+func finalizeSourceConfig(sc *SourceConfig, path string, depth int) error {
+	sc.Type = strings.ToLower(strings.TrimSpace(sc.Type))
+	if depth > 1 {
+		return fmt.Errorf("%s: nested source chains are not supported", path)
+	}
+	if len(sc.AssetMirrors) > 0 {
+		mirrors := make([]string, 0, len(sc.AssetMirrors))
+		for i, m := range sc.AssetMirrors {
+			expanded, err := expandEnv(m)
+			if err != nil {
+				return fmt.Errorf("%s.asset_mirrors[%d]: %w", path, i, err)
+			}
+			if err := validateMirrorTemplate(expanded); err != nil {
+				return fmt.Errorf("%s.asset_mirrors[%d]: %w", path, i, err)
+			}
+			mirrors = append(mirrors, expanded)
+		}
+		sc.AssetMirrors = mirrors
+	}
+	switch sc.Type {
+	case "chain":
+		if depth > 0 {
+			return fmt.Errorf("%s: nested source chains are not supported", path)
+		}
+		if len(sc.Sources) == 0 {
+			return fmt.Errorf("%s.sources must contain at least one source", path)
+		}
+		if sc.ManifestURL != "" || len(sc.ManifestURLs) > 0 || sc.Owner != "" || sc.Repo != "" {
+			return fmt.Errorf("%s: chain sources must be configured inside sources[]", path)
+		}
+		for i := range sc.Sources {
+			if err := finalizeSourceConfig(&sc.Sources[i], fmt.Sprintf("%s.sources[%d]", path, i), depth+1); err != nil {
+				return err
+			}
+		}
+	case "github":
+		if sc.Owner == "" || sc.Repo == "" {
+			return fmt.Errorf("%s.owner and %s.repo are required for GitHub sources", path, path)
+		}
+		if sc.ManifestURL != "" || len(sc.ManifestURLs) > 0 {
+			return fmt.Errorf("%s.manifest_url is only valid for static sources", path)
+		}
+		if sc.APIBase == "" {
+			sc.APIBase = "https://api.github.com"
+		}
+		u, err := url.Parse(sc.APIBase)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			return fmt.Errorf("invalid %s.api_base %q", path, sc.APIBase)
+		}
+		sc.APIBase = strings.TrimRight(sc.APIBase, "/")
+	case "static":
+		urls := append([]string(nil), sc.ManifestURLs...)
+		if sc.ManifestURL != "" {
+			urls = append([]string{sc.ManifestURL}, urls...)
+		}
+		if len(urls) == 0 {
+			return fmt.Errorf("%s.manifest_url or %s.manifest_urls is required for static sources", path, path)
+		}
+		seen := make(map[string]bool, len(urls))
+		clean := make([]string, 0, len(urls))
+		for i, raw := range urls {
+			expanded, err := expandEnv(raw)
+			if err != nil {
+				return fmt.Errorf("%s.manifest_urls[%d]: %w", path, i, err)
+			}
+			u, err := url.Parse(expanded)
+			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				return fmt.Errorf("invalid %s.manifest_url %q", path, expanded)
+			}
+			if seen[expanded] {
+				continue
+			}
+			seen[expanded] = true
+			clean = append(clean, expanded)
+		}
+		sc.ManifestURLs = clean
+		sc.ManifestURL = clean[0]
+		if len(sc.Headers) > 0 {
+			headers := make(map[string]string, len(sc.Headers))
+			for k, v := range sc.Headers {
+				ev, err := expandEnv(v)
+				if err != nil {
+					return fmt.Errorf("%s.headers[%s]: %w", path, k, err)
+				}
+				headers[k] = ev
+			}
+			sc.Headers = headers
+		}
+	default:
+		return fmt.Errorf("%s.type must be github, static or chain, got %q", path, sc.Type)
+	}
+	return nil
+}
+
+func validateMirrorTemplate(template string) error {
+	if strings.TrimSpace(template) == "" {
+		return errors.New("mirror template is empty")
+	}
+	sample := strings.NewReplacer(
+		"{url}", "https://example.test/a",
+		"{owner}", "owner",
+		"{repo}", "repo",
+		"{tag}", "v1.0.0",
+		"{version}", "1.0.0",
+		"{asset}", "update.zip",
+		"{name}", "update.zip",
+		"{os}", "linux",
+		"{arch}", "amd64",
+	).Replace(template)
+	u, err := url.Parse(sample)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("invalid URL template %q", template)
 	}
 	return nil
 }
@@ -479,6 +581,17 @@ func (c *Config) finalizeDownload() error {
 	}
 	if c.Download.Retries < 0 || c.Download.Retries > 10 {
 		return errors.New("download.retries must be between 0 and 10")
+	}
+	if c.Download.Proxy != "" {
+		expanded, err := expandEnv(c.Download.Proxy)
+		if err != nil {
+			return fmt.Errorf("download.proxy: %w", err)
+		}
+		u, err := url.Parse(expanded)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "socks5" && u.Scheme != "socks5h") || u.Host == "" {
+			return errors.New("download.proxy must be an http, https, socks5 or socks5h URL")
+		}
+		c.Download.Proxy = expanded
 	}
 	return nil
 }

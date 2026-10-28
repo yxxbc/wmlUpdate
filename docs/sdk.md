@@ -124,6 +124,15 @@ u, err := wmlupdate.New(wmlupdate.Options{
 Programmatic durations use `time.Duration`; use `ConfigPath` for the JSON string
 form. `BaseDir` defaults to the process working directory for relative paths.
 
+### Chains, mirrors, proxy and macOS
+
+`SourceConfig.Sources` supports ordered chains. `SourceConfig.ManifestURLs`,
+`SourceConfig.AssetMirrors` and `DownloadConfig.Proxy` expose the same failover
+and network options as the JSON configuration. `InstallConfig.MacOS` controls
+optional quarantine removal and ad-hoc signing. See the
+[configuration reference](configuration.md) for semantics and security
+trade-offs.
+
 ### Current version
 
 Pass the version compiled into the running application:

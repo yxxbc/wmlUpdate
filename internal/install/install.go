@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -32,26 +33,27 @@ const planSchemaVersion = 1
 // Plan is the serializable unit of work applied either in-process or by a
 // detached helper after the application exits.
 type Plan struct {
-	SchemaVersion  int               `json:"schema_version"`
-	ID             string            `json:"id"`
-	AppID          string            `json:"app_id"`
-	CurrentVersion string            `json:"current_version,omitempty"`
-	Version        string            `json:"version"`
-	Strategy       string            `json:"strategy"`
-	Target         string            `json:"target,omitempty"`
-	ArtifactPath   string            `json:"artifact_path,omitempty"`
-	Stage          string            `json:"stage,omitempty"`
-	Backup         string            `json:"backup,omitempty"`
-	FileMode       string            `json:"file_mode,omitempty"`
-	KeepBackups    int               `json:"keep_backups"`
-	StateDir       string            `json:"state_dir"`
-	RelaunchPath   string            `json:"relaunch_path,omitempty"`
-	RelaunchArgs   []string          `json:"relaunch_args,omitempty"`
-	Command        string            `json:"command,omitempty"`
-	Args           []string          `json:"args,omitempty"`
-	WorkDir        string            `json:"workdir,omitempty"`
-	Env            map[string]string `json:"env,omitempty"`
-	CommandTimeout int               `json:"command_timeout_seconds,omitempty"`
+	SchemaVersion  int                `json:"schema_version"`
+	ID             string             `json:"id"`
+	AppID          string             `json:"app_id"`
+	CurrentVersion string             `json:"current_version,omitempty"`
+	Version        string             `json:"version"`
+	Strategy       string             `json:"strategy"`
+	Target         string             `json:"target,omitempty"`
+	ArtifactPath   string             `json:"artifact_path,omitempty"`
+	Stage          string             `json:"stage,omitempty"`
+	Backup         string             `json:"backup,omitempty"`
+	FileMode       string             `json:"file_mode,omitempty"`
+	KeepBackups    int                `json:"keep_backups"`
+	StateDir       string             `json:"state_dir"`
+	RelaunchPath   string             `json:"relaunch_path,omitempty"`
+	RelaunchArgs   []string           `json:"relaunch_args,omitempty"`
+	Command        string             `json:"command,omitempty"`
+	Args           []string           `json:"args,omitempty"`
+	WorkDir        string             `json:"workdir,omitempty"`
+	Env            map[string]string  `json:"env,omitempty"`
+	CommandTimeout int                `json:"command_timeout_seconds,omitempty"`
+	MacOS          config.MacOSConfig `json:"macos,omitempty"`
 }
 
 // Manager applies plans against one state store.
@@ -102,6 +104,7 @@ func Prepare(cfg *config.Config, p platform.Platform, artifact release.Asset, ar
 		WorkDir:        cfg.Install.WorkDir,
 		Env:            cfg.Install.Env,
 		CommandTimeout: int(cfg.Install.Timeout.Value().Seconds()),
+		MacOS:          cfg.Install.MacOS,
 	}
 	if plan.Version == "" {
 		return nil, errors.New("artifact version is empty")
@@ -460,7 +463,7 @@ func (m *Manager) Apply(ctx context.Context, plan *Plan) error {
 
 	switch plan.Strategy {
 	case "directory", "file":
-		if err := m.applyReplace(plan); err != nil {
+		if err := m.applyReplace(ctx, plan); err != nil {
 			return err
 		}
 	case "command":
@@ -482,7 +485,7 @@ func (m *Manager) Apply(ctx context.Context, plan *Plan) error {
 	return nil
 }
 
-func (m *Manager) applyReplace(plan *Plan) error {
+func (m *Manager) applyReplace(ctx context.Context, plan *Plan) error {
 	if _, err := os.Lstat(plan.Stage); err != nil {
 		return fmt.Errorf("staged artifact is missing: %w", err)
 	}
@@ -509,6 +512,15 @@ func (m *Manager) applyReplace(plan *Plan) error {
 			_ = os.Rename(plan.Backup, plan.Target)
 		}
 		return fmt.Errorf("activate staged installation: %w", err)
+	}
+	if plan.Strategy == "directory" {
+		if err := m.applyMacOSPostInstall(ctx, plan); err != nil {
+			_ = os.RemoveAll(plan.Target)
+			if targetExists {
+				_ = os.Rename(plan.Backup, plan.Target)
+			}
+			return err
+		}
 	}
 	m.Data.Pending.Phase = "committed"
 	if err := m.Store.Save(m.Data); err != nil {
@@ -702,6 +714,38 @@ func validatePlan(plan *Plan) error {
 		}
 	default:
 		return fmt.Errorf("unsupported plan strategy %q", plan.Strategy)
+	}
+	return nil
+}
+
+func (m *Manager) applyMacOSPostInstall(ctx context.Context, plan *Plan) error {
+	if runtime.GOOS != "darwin" || (!plan.MacOS.RemoveQuarantine && !plan.MacOS.AdHocSign) {
+		return nil
+	}
+	if plan.MacOS.RemoveQuarantine {
+		out := &limitedBuffer{limit: 64 << 10}
+		cmd := exec.CommandContext(ctx, "/usr/bin/xattr", "-dr", "com.apple.quarantine", plan.Target)
+		cmd.Stdout, cmd.Stderr = out, out
+		if err := cmd.Run(); err != nil {
+			m.warn("could not remove quarantine from %s: %v (%s)", plan.Target, err, strings.TrimSpace(out.String()))
+		}
+	}
+	if plan.MacOS.AdHocSign {
+		if !strings.HasSuffix(strings.ToLower(plan.Target), ".app") {
+			m.warn("ad_hoc_sign is enabled but target %s is not an .app bundle; skipping codesign", plan.Target)
+			return nil
+		}
+		tctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+		out := &limitedBuffer{limit: 256 << 10}
+		cmd := exec.CommandContext(tctx, "/usr/bin/codesign", "--force", "--deep", "--sign", "-", plan.Target)
+		cmd.Stdout, cmd.Stderr = out, out
+		if err := cmd.Run(); err != nil {
+			if tctx.Err() != nil {
+				return fmt.Errorf("ad-hoc codesign timed out: %w", tctx.Err())
+			}
+			return fmt.Errorf("ad-hoc codesign failed: %w: %s", err, strings.TrimSpace(out.String()))
+		}
 	}
 	return nil
 }

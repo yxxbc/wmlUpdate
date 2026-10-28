@@ -14,6 +14,7 @@ import (
 	"github.com/yxxbc/wmlUpdate/internal/config"
 	"github.com/yxxbc/wmlUpdate/internal/httpx"
 	"github.com/yxxbc/wmlUpdate/internal/manifest"
+	"github.com/yxxbc/wmlUpdate/internal/platform"
 	"github.com/yxxbc/wmlUpdate/internal/sign"
 )
 
@@ -229,5 +230,83 @@ func TestGitHubRejectsBadChecksumsSignature(t *testing.T) {
 	p, _ := New(cfg, client, t.TempDir())
 	if _, err := p.Fetch(context.Background()); err == nil {
 		t.Fatal("bad checksum signature was accepted")
+	}
+}
+
+func TestChainFallsThroughToNextSource(t *testing.T) {
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	defer bad.Close()
+	m := &manifest.Manifest{
+		SchemaVersion: 1, AppID: "com.example.source", Channel: "stable", Version: "3.0.0",
+		Assets: []manifest.Asset{{Name: "app.zip", OS: platform.Current().OS, Arch: platform.Current().Arch, URL: "app.zip", SHA256: strings.Repeat("a", 64), Format: "zip"}},
+	}
+	raw, _ := manifest.Marshal(m)
+	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(raw)
+	}))
+	defer good.Close()
+	dir := t.TempDir()
+	cfg := writeCfg(t, dir,
+		`{"type":"chain","sources":[`+
+			`{"type":"static","manifest_url":"`+bad.URL+`/manifest.json"},`+
+			`{"type":"static","manifest_url":"`+good.URL+`/manifest.json","asset_mirrors":["https://mirror.example/{version}/{asset}"]}`+
+			`]}`,
+		"")
+	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
+	p, err := New(cfg, client, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Version.String() != "3.0.0" || rel.Source != "static" {
+		t.Fatalf("release = %+v", rel)
+	}
+	if len(rel.Assets) != 1 || len(rel.Assets[0].FallbackURLs) == 0 {
+		t.Fatalf("asset mirrors not applied: %+v", rel.Assets)
+	}
+}
+
+func TestStaticManifestURLsFallback(t *testing.T) {
+	m := &manifest.Manifest{
+		SchemaVersion: 1, AppID: "com.example.source", Channel: "stable", Version: "4.0.0",
+		Assets: []manifest.Asset{{Name: "app.zip", OS: platform.Current().OS, Arch: platform.Current().Arch, URL: "app.zip", SHA256: strings.Repeat("b", 64), Format: "zip"}},
+	}
+	raw, _ := manifest.Marshal(m)
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "down", http.StatusBadGateway)
+	}))
+	defer bad.Close()
+	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/stable/manifest.json" {
+			_, _ = w.Write(raw)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer good.Close()
+	dir := t.TempDir()
+	cfg := writeCfg(t, dir,
+		`{"type":"static","manifest_urls":["`+bad.URL+`/stable/manifest.json","`+good.URL+`/stable/manifest.json"]}`,
+		"")
+	client := httpx.NewClient(5*time.Second, httpx.Policy{AllowInsecure: true})
+	p, err := New(cfg, client, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := p.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Version.String() != "4.0.0" {
+		t.Fatalf("version = %s", rel.Version)
+	}
+	// Relative asset URLs should be resolvable through both manifest mirrors.
+	if len(rel.Assets[0].FallbackURLs) == 0 {
+		t.Fatalf("no asset mirror URLs: %+v", rel.Assets[0])
 	}
 }

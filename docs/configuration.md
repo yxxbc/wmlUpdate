@@ -88,7 +88,8 @@ accepted and removed. Build metadata is ignored for ordering.
 
 ## `source`
 
-Exactly one source type is used.
+Exactly one top-level source type is used. A source can itself be a chain of
+mirrors.
 
 ### GitHub
 
@@ -134,8 +135,10 @@ endpoint, which supports private repositories. Without a token, public
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `manifest_url` | yes | URL of `manifest.json` |
+| `manifest_url` | one of | URL of `manifest.json` |
+| `manifest_urls` | one of | Ordered mirror URLs of the same manifest. The first usable mirror wins; relative assets are also resolved against the other bases for download failover |
 | `headers` | no | Extra request headers for the manifest, signature and same-host assets |
+| `asset_mirrors` | no | Asset URL templates tried when the primary asset host fails |
 
 When `security.public_key` or `security.public_key_file` is configured, the
 detached signature is fetched from `<manifest_url>.sig` and verified against the
@@ -144,6 +147,88 @@ exact manifest bytes before parsing. A missing or invalid signature is fatal.
 Headers are forwarded to assets only when the asset has the same host (including
 port) as the manifest. This prevents an authenticated manifest request from
 leaking credentials to a third-party CDN.
+
+### Chain / automatic failover
+
+```json
+{
+  "type": "chain",
+  "sources": [
+    {
+      "type": "github",
+      "owner": "acme",
+      "repo": "myapp",
+      "tag_prefix": "v",
+      "token_env": "GITHUB_TOKEN",
+      "asset_mirrors": [
+        "https://ghproxy.net/https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}",
+        "https://gitee.com/{owner}/{repo}/releases/download/{tag}/{asset}"
+      ]
+    },
+    {
+      "type": "static",
+      "manifest_url": "https://cdn.jsdelivr.net/gh/acme/myapp@main/updates/manifest.json"
+    },
+    {
+      "type": "static",
+      "manifest_url": "https://gitee.com/acme/myapp/raw/main/updates/manifest.json"
+    },
+    {
+      "type": "static",
+      "manifest_url": "https://updates.example.com/stable/manifest.json"
+    }
+  ]
+}
+```
+
+`chain.sources` is ordered. The updater fetches metadata from each source until
+one returns a valid, authenticated release; later sources are fallbacks. A
+failure in one mirror does not abort the chain.
+
+If metadata succeeds but the artifact download fails, the loader tries:
+
+1. the asset's own URL;
+2. `asset_mirrors` from the winning source;
+3. for relative static assets, the same path on the other `manifest_urls`;
+4. releases for the same version from the other chain sources.
+
+Every fallback artifact must match the original checked SHA-256. A mirror can
+provide availability, never a different version or different bytes.
+
+Mirror templates support:
+
+| Placeholder | Value |
+| --- | --- |
+| `{url}` | Original absolute asset URL |
+| `{owner}`, `{repo}` | GitHub coordinates (empty for static sources) |
+| `{tag}` | Release tag, path-escaped |
+| `{version}` | Normalized version, path-escaped |
+| `{asset}`, `{name}` | Asset filename, path-escaped |
+| `{os}`, `{arch}` | Target platform |
+
+Nested chains are rejected. Keep the first source authoritative and mirrors in
+sync; because metadata selection is first-success, a reachable but stale first
+mirror will be used rather than a newer fallback.
+
+### Asset mirrors
+
+`asset_mirrors` can be used without a chain, for example to keep GitHub Releases
+as the metadata source while downloading through a proxy:
+
+```json
+{
+  "type": "github",
+  "owner": "acme",
+  "repo": "myapp",
+  "asset_mirrors": [
+    "https://ghproxy.net/https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}",
+    "https://updates.example.com/{version}/{asset}"
+  ]
+}
+```
+
+Mirrors receive no source `headers`/token. Credentials are only sent to the
+asset URL's original host (and same-host fallbacks).
 
 ## `asset_rules`
 
@@ -241,6 +326,35 @@ root's mode, but it does not copy ownership, ACLs, xattrs or resource forks from
 the previous tree. If those matter, create the install directory with the
 appropriate owner/ACL and use the `command` strategy with a platform package
 installer, or reapply metadata in a post-install step.
+
+### macOS quarantine and ad-hoc signing
+
+macOS may mark files as quarantined or report a modified bundle as damaged.
+Optional directory post-install handling is available:
+
+```json
+{
+  "type": "directory",
+  "path": "/Applications/MyApp.app",
+  "macos": {
+    "remove_quarantine": true,
+    "ad_hoc_sign": false
+  }
+}
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `remove_quarantine` | `false` | Run `xattr -dr com.apple.quarantine` on the installed target. This bypasses Gatekeeper's first-launch evaluation |
+| `ad_hoc_sign` | `false` | Run `codesign --force --deep --sign -` on a `.app` target |
+
+Both default off. `remove_quarantine` weakens a macOS security boundary and
+should only be enabled for updates whose source and SHA-256/Ed25519 trust you
+control. `ad_hoc_sign` **destroys Developer ID signatures and notarization**;
+use it only for unsigned app bundles, never for a notarized distribution. A
+quarantine-removal command failure is a warning; ad-hoc signing failure rolls
+back the directory swap. These actions only run when the updater itself is
+running on macOS.
 
 ### `file`
 
@@ -372,7 +486,8 @@ records the computed SHA-256, but it cannot authenticate what was downloaded.
 {
   "max_bytes": 2147483648,
   "timeout": "30m",
-  "retries": 3
+  "retries": 3,
+  "proxy": "http://127.0.0.1:7890"
 }
 ```
 
@@ -381,10 +496,15 @@ records the computed SHA-256, but it cannot authenticate what was downloaded.
 | `max_bytes` | 2 GiB | Maximum artifact size and extraction-expansion budget |
 | `timeout` | `30m` | Overall HTTP client timeout |
 | `retries` | `3` | Retries for transient source/download failures (0–10) |
+| `proxy` | env | Explicit HTTP, HTTPS, SOCKS5 or SOCKS5H proxy. Overrides `HTTP_PROXY`/`HTTPS_PROXY`. Supports `${ENV_VAR}` |
 
 Retries honor `Retry-After` for 429/503 responses. Downloads resume from a
 `.part` file using HTTP Range requests. A final file only appears after size and
 SHA-256 verification.
+
+A configured proxy applies to metadata, signatures, artifacts and redirects.
+Proxy credentials are not logged. An explicit proxy is trusted configuration;
+the proxy can observe destination hosts and URLs.
 
 ## Environment expansion and paths
 

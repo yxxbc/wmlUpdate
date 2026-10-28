@@ -31,7 +31,8 @@ github.com/yxxbc/wmlUpdate (package wmlupdate)
   └─ public SDK: New, Check, Apply, Options, Config, Event
        └─ internal/engine ──────── orchestration, checked snapshots, results
             ├─ internal/source ──┬─ github.go   Releases API + checksums
-            │                    └─ static.go   signed manifest + sidecar
+            │                    ├─ static.go   signed manifest + mirrors
+            │                    └─ chain.go    ordered failover
             ├─ internal/httpx ──── hardened client, retry, resumable download
             ├─ internal/manifest  manifest model, validation, signature
             ├─ internal/checksum  SHA-256 and sha256sum parsing
@@ -227,3 +228,4 @@ The same shapes are returned by the HTTP job API. See
 - [ADR 0003: transactional replace with backups](adr/0003-transactional-install.md)
 - [ADR 0004: supply-chain verification](adr/0004-supply-chain-verification.md)
 - [ADR 0005: SDK-first public API](adr/0005-sdk-first-public-api.md)
+- [ADR 0006: ordered source chains](adr/0006-source-chains.md)

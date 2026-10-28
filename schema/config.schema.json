@@ -4,10 +4,20 @@
   "title": "wml-update configuration",
   "type": "object",
   "additionalProperties": false,
-  "required": ["app_id", "source", "install"],
+  "required": [
+    "app_id",
+    "source",
+    "install"
+  ],
   "properties": {
-    "$schema": {"type": "string", "format": "uri-reference"},
-    "schema_version": {"const": 1, "default": 1},
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1
+    },
     "app_id": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
@@ -23,34 +33,7 @@
       "description": "Fallback current version. Prefer --current-version from the running app."
     },
     "source": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type"],
-      "properties": {
-        "type": {"enum": ["github", "static"]},
-        "owner": {"type": "string"},
-        "repo": {"type": "string"},
-        "api_base": {"type": "string", "format": "uri", "default": "https://api.github.com"},
-        "tag_prefix": {"type": "string"},
-        "token_env": {"type": "string", "description": "Environment variable holding a GitHub token."},
-        "include_prerelease": {"type": "boolean", "default": false},
-        "manifest_url": {"type": "string", "format": "uri"},
-        "headers": {
-          "type": "object",
-          "additionalProperties": {"type": "string"},
-          "description": "Additional HTTP headers for the static source. Values support ${ENV_VAR} expansion."
-        }
-      },
-      "allOf": [
-        {
-          "if": {"properties": {"type": {"const": "github"}}},
-          "then": {"required": ["owner", "repo"]}
-        },
-        {
-          "if": {"properties": {"type": {"const": "static"}}},
-          "then": {"required": ["manifest_url"]}
-        }
-      ]
+      "$ref": "#/$defs/source"
     },
     "asset_rules": {
       "type": "array",
@@ -59,14 +42,30 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "os": {"type": "string"},
-          "arch": {"type": "string"},
+          "os": {
+            "type": "string"
+          },
+          "arch": {
+            "type": "string"
+          },
           "match": {
             "type": "string",
             "description": "Glob matched against the asset name. Supports {version}, {tag}, {os}, {arch} placeholders and * wildcards."
           },
           "format": {
-            "enum": ["zip", "tar.gz", "tgz", "tar", "gz", "raw", "bin", "exe", "msi", "pkg", "dmg"]
+            "enum": [
+              "zip",
+              "tar.gz",
+              "tgz",
+              "tar",
+              "gz",
+              "raw",
+              "bin",
+              "exe",
+              "msi",
+              "pkg",
+              "dmg"
+            ]
           }
         }
       }
@@ -74,81 +73,336 @@
     "install": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
-        "type": {"enum": ["directory", "file", "command", "external"]},
-        "path": {"type": "string"},
+        "type": {
+          "enum": [
+            "directory",
+            "file",
+            "command",
+            "external"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
         "paths": {
           "type": "object",
-          "additionalProperties": {"type": "string"},
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Keys are OS names (windows, darwin, linux) or os-arch pairs."
         },
-        "strip_components": {"type": "integer", "minimum": 0, "maximum": 32, "default": 0},
+        "strip_components": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32,
+          "default": 0
+        },
         "preserve": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Relative doublestar globs copied from the existing install into the staged update."
         },
-        "file_mode": {"type": "string", "pattern": "^0?[0-7]{3,4}$"},
-        "keep_backups": {"type": "integer", "minimum": 0, "maximum": 10, "default": 1},
-        "command": {"type": "string"},
-        "args": {"type": "array", "items": {"type": "string"}},
-        "workdir": {"type": "string"},
-        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+        "file_mode": {
+          "type": "string",
+          "pattern": "^0?[0-7]{3,4}$"
+        },
+        "keep_backups": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workdir": {
+          "type": "string"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "timeout": {
           "type": "string",
           "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
           "default": "30m"
         },
-        "relaunch_path": {"type": "string"},
-        "relaunch_args": {"type": "array", "items": {"type": "string"}}
+        "relaunch_path": {
+          "type": "string"
+        },
+        "relaunch_args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "macos": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remove_quarantine": {
+              "type": "boolean",
+              "default": false,
+              "description": "Remove com.apple.quarantine recursively on macOS. Bypasses Gatekeeper first-launch checks."
+            },
+            "ad_hoc_sign": {
+              "type": "boolean",
+              "default": false,
+              "description": "Force ad-hoc codesign of a .app bundle. Destroys Developer ID signatures/notarization."
+            }
+          }
+        }
       },
       "allOf": [
         {
-          "if": {"properties": {"type": {"enum": ["directory", "file"]}}},
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "directory",
+                  "file"
+                ]
+              }
+            }
+          },
           "then": {
             "anyOf": [
-              {"required": ["path"]},
-              {"required": ["paths"]}
+              {
+                "required": [
+                  "path"
+                ]
+              },
+              {
+                "required": [
+                  "paths"
+                ]
+              }
             ]
           }
         },
         {
-          "if": {"properties": {"type": {"const": "command"}}},
-          "then": {"required": ["command"]}
+          "if": {
+            "properties": {
+              "type": {
+                "const": "command"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "command"
+            ]
+          }
         }
       ]
     },
-    "state_dir": {"type": "string"},
+    "state_dir": {
+      "type": "string"
+    },
     "security": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "public_key": {"type": "string", "description": "Inline PEM or base64 raw Ed25519 public key."},
-        "public_key_file": {"type": "string"},
-        "checksums_asset": {"type": "string", "default": "checksums.txt"},
-        "checksums_signature_asset": {"type": "string", "default": "checksums.txt.sig"},
+        "public_key": {
+          "type": "string",
+          "description": "Inline PEM or base64 raw Ed25519 public key."
+        },
+        "public_key_file": {
+          "type": "string"
+        },
+        "checksums_asset": {
+          "type": "string",
+          "default": "checksums.txt"
+        },
+        "checksums_signature_asset": {
+          "type": "string",
+          "default": "checksums.txt.sig"
+        },
         "allowed_hosts": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Optional host allowlist, including wildcard subdomains such as *.example.com."
         },
-        "allow_insecure_http": {"type": "boolean", "default": false},
-        "allow_unverified_assets": {"type": "boolean", "default": false}
+        "allow_insecure_http": {
+          "type": "boolean",
+          "default": false
+        },
+        "allow_unverified_assets": {
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "download": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "max_bytes": {"type": "integer", "minimum": 1, "default": 2147483648},
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2147483648
+        },
         "timeout": {
           "type": "string",
           "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
           "default": "30m"
         },
-        "retries": {"type": "integer", "minimum": 0, "maximum": 10, "default": 3}
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        },
+        "proxy": {
+          "type": "string",
+          "description": "Explicit HTTP(S)/SOCKS proxy URL. Overrides HTTP(S)_PROXY. Supports ${ENV_VAR}."
+        }
       }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "github",
+            "static",
+            "chain"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "api_base": {
+          "type": "string",
+          "format": "uri",
+          "default": "https://api.github.com"
+        },
+        "tag_prefix": {
+          "type": "string"
+        },
+        "token_env": {
+          "type": "string",
+          "description": "Environment variable holding a GitHub token."
+        },
+        "include_prerelease": {
+          "type": "boolean",
+          "default": false
+        },
+        "manifest_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Additional HTTP headers for the static source. Values support ${ENV_VAR} expansion."
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "description": "Ordered fallback sources for type=chain. Nested chains are rejected at runtime."
+        },
+        "manifest_urls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered mirror manifest URLs for type=static."
+        },
+        "asset_mirrors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "URL templates for asset download fallback. Supports {url}, {owner}, {repo}, {tag}, {version}, {asset}, {name}, {os}, {arch}."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "github"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "owner",
+              "repo"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "static"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "manifest_url"
+                ]
+              },
+              {
+                "required": [
+                  "manifest_urls"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "chain"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "sources"
+            ]
+          }
+        }
+      ]
     }
   }
 }

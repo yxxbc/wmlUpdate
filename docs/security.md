@@ -74,11 +74,16 @@ reproduce with OpenSSL or a small script and avoids canonical-JSON pitfalls.
 - Authorization headers are not forwarded by Go's HTTP client across host
   changes. Self-hosted config headers are attached to assets only when the asset
   host exactly matches the manifest host.
+- Source-chain fallback URLs and asset mirrors never receive the winning
+  source's credentials. A fallback download must match the checked SHA-256.
 - Response metadata bodies are size-limited (4 MiB manifests, 32 MiB GitHub
   response, 16 MiB checksums).
 - Downloads are bounded by `download.max_bytes` and verified sizes.
 - Retries are bounded and honor `Retry-After`.
-- Proxy settings follow Go's standard `HTTP_PROXY` / `HTTPS_PROXY` environment.
+- Proxy settings follow Go's standard `HTTP_PROXY` / `HTTPS_PROXY` environment
+  unless `download.proxy` explicitly overrides them. A trusted proxy can observe
+  destination hosts and URLs; it cannot substitute bytes because SHA-256 is still
+  enforced.
 
 ## Filesystem protections
 
@@ -119,6 +124,18 @@ when a transaction was interrupted before the new tree was active.
 
 `command` installers are intentionally outside this guarantee. They run with the
 updater's privileges and their rollback behavior belongs to the installer.
+
+### macOS quarantine and ad-hoc signing
+
+`install.macos.remove_quarantine` runs `xattr -dr com.apple.quarantine` on the
+installed target. This bypasses Gatekeeper's first-launch evaluation and weakens
+a user security boundary; enable it only when the update channel, signature and
+hashes are under your control.
+
+`install.macos.ad_hoc_sign` runs `codesign --force --deep --sign -` on a `.app`.
+Ad-hoc signing can make an unsigned bundle launch, but it **invalidates Developer
+ID signatures and notarization**. Never enable it for a notarized distribution.
+Both options default off and only run when the updater runs on macOS.
 
 ### Windows helper
 
@@ -168,6 +185,13 @@ redirect or replace updates.
 - Command installers can do anything the updater user can do.
 - The local API has no per-endpoint authorization or rate limiting beyond the
   loopback default.
+- Source mirrors can deny service or serve different bytes; they cannot bypass
+  the selected version or SHA-256 requirement. A mirror that serves a valid but
+  malicious manifest still requires the configured Ed25519 key.
+- A configured proxy is a trusted network intermediary for availability and
+  metadata; it does not replace artifact hashes.
+- Removing quarantine reduces Gatekeeper enforcement; ad-hoc signing destroys
+  notarization.
 
 ## Verification checklist for integrators
 

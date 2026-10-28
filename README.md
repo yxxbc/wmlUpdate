@@ -64,15 +64,18 @@ The same engine is exposed as:
   lifecycle integration.
 - **Windows, macOS and Linux**, `amd64` and `arm64`, using one CGO-free binary
   for the optional sidecar.
-- **GitHub Releases or self-hosted static manifests**.
+- **GitHub Releases or self-hosted static manifests**, with an ordered **source
+  chain** and same-version/SHA-256 mirror failover.
 - **SHA-256 for every artifact**, optional **Ed25519 detached signatures**,
   TLS enforcement and host allowlists.
 - **Transactional directory/file installs** with backups, crash recovery and
   rollback data.
 - **Safe archive extraction**: traversal, symlink escape, hardlink, special-file,
   entry-count and expansion-size defenses.
-- **Resumable downloads** with bounded retries and `.part` files.
-- **Deferred apply** for Windows when the application is still running.
+- **Resumable downloads** with bounded retries, explicit proxy support and
+  `.part` files.
+- **Deferred apply** for Windows when the application is still running, plus
+  optional macOS quarantine removal and ad-hoc signing.
 - **Release tooling**: archive, hash, sign, manifest and checksum generation.
 
 ## Install

@@ -213,6 +213,20 @@ Do not embed long-lived credentials in a distributed client if the channel is
 public. Prefer a short-lived token issued by your backend, supplied through the
 environment.
 
+## Mirrors and failover
+
+A single static host is a single point of failure. Deploy the same manifest and
+assets to multiple hosts and configure either:
+
+- `source.manifest_urls` with ordered URLs for the same static channel;
+- a `source.type: chain` containing GitHub, static mirrors, jsDelivr, ghproxy,
+  Gitee and your own site;
+- `asset_mirrors` URL templates for artifact hosts.
+
+Fallback downloads must match the originally checked SHA-256. Mirrors cannot
+change the version or bytes. See
+[configuration](configuration.md#chain-automatic-failover).
+
 ## Multiple channels
 
 Use separate directories, manifests and client channel values:

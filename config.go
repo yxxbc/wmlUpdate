@@ -29,11 +29,15 @@ type Config struct {
 const (
 	SourceGitHub = "github"
 	SourceStatic = "static"
+	SourceChain  = "chain"
 )
 
 // SourceConfig describes GitHub Releases or a self-hosted manifest.
 type SourceConfig struct {
 	Type string `json:"type"`
+
+	// Chain tries sources in order until one returns valid metadata.
+	Sources []SourceConfig `json:"sources,omitempty"`
 
 	// GitHub Releases.
 	Owner             string `json:"owner,omitempty"`
@@ -44,8 +48,12 @@ type SourceConfig struct {
 	IncludePrerelease bool   `json:"include_prerelease,omitempty"`
 
 	// Self-hosted static manifest.
-	ManifestURL string            `json:"manifest_url,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
+	ManifestURL  string            `json:"manifest_url,omitempty"`
+	ManifestURLs []string          `json:"manifest_urls,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+
+	// AssetMirrors are URL templates for download failover.
+	AssetMirrors []string `json:"asset_mirrors,omitempty"`
 }
 
 // AssetRule selects a release asset for a platform. Rules are evaluated in
@@ -83,6 +91,19 @@ type InstallConfig struct {
 
 	RelaunchPath string   `json:"relaunch_path,omitempty"`
 	RelaunchArgs []string `json:"relaunch_args,omitempty"`
+
+	MacOS MacOSConfig `json:"macos,omitempty"`
+}
+
+// MacOSConfig controls optional post-install metadata handling on macOS.
+type MacOSConfig struct {
+	// RemoveQuarantine removes com.apple.quarantine recursively. This bypasses
+	// Gatekeeper's first-launch check; enable only for verified updates.
+	RemoveQuarantine bool `json:"remove_quarantine,omitempty"`
+	// AdHocSign force-signs the target with an ad-hoc signature. This can make
+	// unsigned bundles launch, but destroys Developer ID signatures and
+	// notarization; use only for unsigned distributions.
+	AdHocSign bool `json:"ad_hoc_sign,omitempty"`
 }
 
 // SecurityConfig controls signature verification and network boundaries.
@@ -101,6 +122,7 @@ type DownloadConfig struct {
 	MaxBytes int64         `json:"max_bytes,omitempty"`
 	Timeout  time.Duration `json:"timeout,omitempty"`
 	Retries  int           `json:"retries,omitempty"`
+	Proxy    string        `json:"proxy,omitempty"`
 }
 
 // Platform overrides the target platform. The zero value means the host
@@ -125,6 +147,7 @@ func (c *Config) internal(baseDir string) (*config.Config, error) {
 		StateDir:       c.StateDir,
 		Source: config.SourceConfig{
 			Type:              c.Source.Type,
+			Sources:           cloneSources(c.Source.Sources),
 			Owner:             c.Source.Owner,
 			Repo:              c.Source.Repo,
 			APIBase:           c.Source.APIBase,
@@ -132,7 +155,9 @@ func (c *Config) internal(baseDir string) (*config.Config, error) {
 			TokenEnv:          c.Source.TokenEnv,
 			IncludePrerelease: c.Source.IncludePrerelease,
 			ManifestURL:       c.Source.ManifestURL,
+			ManifestURLs:      cloneSlice(c.Source.ManifestURLs),
 			Headers:           cloneMap(c.Source.Headers),
+			AssetMirrors:      cloneSlice(c.Source.AssetMirrors),
 		},
 		Install: config.InstallConfig{
 			Type:            c.Install.Type,
@@ -149,6 +174,10 @@ func (c *Config) internal(baseDir string) (*config.Config, error) {
 			Timeout:         config.Duration(c.Install.Timeout),
 			RelaunchPath:    c.Install.RelaunchPath,
 			RelaunchArgs:    cloneSlice(c.Install.RelaunchArgs),
+			MacOS: config.MacOSConfig{
+				RemoveQuarantine: c.Install.MacOS.RemoveQuarantine,
+				AdHocSign:        c.Install.MacOS.AdHocSign,
+			},
 		},
 		Security: config.SecurityConfig{
 			PublicKey:               c.Security.PublicKey,
@@ -163,6 +192,7 @@ func (c *Config) internal(baseDir string) (*config.Config, error) {
 			MaxBytes: c.Download.MaxBytes,
 			Timeout:  config.Duration(c.Download.Timeout),
 			Retries:  c.Download.Retries,
+			Proxy:    c.Download.Proxy,
 		},
 	}
 	for _, r := range c.AssetRules {
@@ -183,6 +213,30 @@ func cloneMap(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
 	for k, v := range m {
 		out[k] = v
+	}
+	return out
+}
+
+func cloneSources(s []SourceConfig) []config.SourceConfig {
+	if s == nil {
+		return nil
+	}
+	out := make([]config.SourceConfig, len(s))
+	for i := range s {
+		out[i] = config.SourceConfig{
+			Type:              s[i].Type,
+			Sources:           cloneSources(s[i].Sources),
+			Owner:             s[i].Owner,
+			Repo:              s[i].Repo,
+			APIBase:           s[i].APIBase,
+			TagPrefix:         s[i].TagPrefix,
+			TokenEnv:          s[i].TokenEnv,
+			IncludePrerelease: s[i].IncludePrerelease,
+			ManifestURL:       s[i].ManifestURL,
+			ManifestURLs:      cloneSlice(s[i].ManifestURLs),
+			Headers:           cloneMap(s[i].Headers),
+			AssetMirrors:      cloneSlice(s[i].AssetMirrors),
+		}
 	}
 	return out
 }

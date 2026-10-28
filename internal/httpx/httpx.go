@@ -26,6 +26,9 @@ type Policy struct {
 	AllowInsecure bool
 	AllowedHosts  []string
 	MaxRedirects  int
+	// Proxy overrides HTTP(S)_PROXY. Supported schemes: http, https, socks5,
+	// socks5h. An invalid value falls back to the environment.
+	Proxy string
 }
 
 // NewClient builds a client with scheme, host and redirect enforcement.
@@ -39,6 +42,11 @@ func NewClient(timeout time.Duration, policy Policy) *http.Client {
 	transport.IdleConnTimeout = 90 * time.Second
 	transport.TLSHandshakeTimeout = 15 * time.Second
 	transport.ResponseHeaderTimeout = 30 * time.Second
+	if policy.Proxy != "" {
+		if proxyURL, err := url.Parse(policy.Proxy); err == nil && proxyURL.Host != "" {
+			transport.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
 	return &http.Client{
 		Timeout:   timeout,
 		Transport: &policyTransport{base: transport, policy: policy},

@@ -3,7 +3,9 @@ package install
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/yxxbc/wmlUpdate/internal/archive"
@@ -167,5 +169,29 @@ func TestPrepareRejectsRootTarget(t *testing.T) {
 	artifact := newArchive(t, map[string]string{"app": "x"})
 	if _, err := Prepare(cfg, platform.Current(), release.Asset{Name: "a.zip", Format: "zip"}, artifact, "2.0.0", "1.0.0", event.NopSink{}); err == nil {
 		t.Fatal("root install target was accepted")
+	}
+}
+
+func TestMacOSQuarantineRemoval(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS-only metadata test")
+	}
+	dir := t.TempDir()
+	file := filepath.Join(dir, "app")
+	if err := os.WriteFile(file, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("/usr/bin/xattr", "-w", "com.apple.quarantine", "0081;test", file).CombinedOutput(); err != nil {
+		t.Fatalf("set xattr: %v %s", err, out)
+	}
+	mgr := &Manager{Sink: event.NopSink{}}
+	if err := mgr.applyMacOSPostInstall(context.Background(), &Plan{
+		Target: dir,
+		MacOS:  config.MacOSConfig{RemoveQuarantine: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("/usr/bin/xattr", "-p", "com.apple.quarantine", file).Run(); err == nil {
+		t.Fatal("quarantine xattr still present")
 	}
 }

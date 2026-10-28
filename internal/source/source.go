@@ -27,14 +27,30 @@ type Provider interface {
 // New constructs the configured provider.
 func New(cfg *config.Config, client *http.Client, cacheDir string) (Provider, error) {
 	cache := newMetadataCache(cacheDir)
-	common := base{cfg: cfg, client: client, cache: cache, retries: cfg.Download.Retries}
-	switch cfg.Source.Type {
+	return newProvider(cfg, cfg.Source, client, cache)
+}
+
+func newProvider(cfg *config.Config, sc config.SourceConfig, client *http.Client, cache *metadataCache) (Provider, error) {
+	child := *cfg
+	child.Source = sc
+	common := base{cfg: &child, client: client, cache: cache, retries: cfg.Download.Retries}
+	switch sc.Type {
 	case "github":
 		return &githubProvider{base: common}, nil
 	case "static":
 		return &staticProvider{base: common}, nil
+	case "chain":
+		chain := &chainProvider{base: common}
+		for i, sourceCfg := range sc.Sources {
+			provider, err := newProvider(cfg, sourceCfg, client, cache)
+			if err != nil {
+				return nil, fmt.Errorf("source.sources[%d]: %w", i, err)
+			}
+			chain.sources = append(chain.sources, provider)
+		}
+		return chain, nil
 	default:
-		return nil, fmt.Errorf("unsupported source type %q", cfg.Source.Type)
+		return nil, fmt.Errorf("unsupported source type %q", sc.Type)
 	}
 }
 

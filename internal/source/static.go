@@ -24,7 +24,29 @@ func (p *staticProvider) Name() string { return "static" }
 
 func (p *staticProvider) Fetch(ctx context.Context) (*release.Release, error) {
 	cfg := p.cfg
-	manifestURL := cfg.Source.ManifestURL
+	manifestURLs := cfg.Source.ManifestURLs
+	if len(manifestURLs) == 0 && cfg.Source.ManifestURL != "" {
+		manifestURLs = []string{cfg.Source.ManifestURL}
+	}
+	if len(manifestURLs) == 0 {
+		return nil, fmt.Errorf("no manifest URL configured")
+	}
+	var failures []string
+	for _, manifestURL := range manifestURLs {
+		rel, err := p.fetchOne(ctx, manifestURL, manifestURLs)
+		if err == nil {
+			return rel, nil
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		failures = append(failures, fmt.Sprintf("%s: %v", hostOf(manifestURL), err))
+	}
+	return nil, fmt.Errorf("all %d static manifest mirrors failed: %s", len(manifestURLs), strings.Join(failures, "; "))
+}
+
+func (p *staticProvider) fetchOne(ctx context.Context, manifestURL string, allManifestURLs []string) (*release.Release, error) {
+	cfg := p.cfg
 	headers := cfg.Source.Headers
 	body, err := p.fetchMetadata(ctx, manifestURL, headers, 4<<20)
 	if err != nil {
@@ -42,7 +64,7 @@ func (p *staticProvider) Fetch(ctx context.Context) (*release.Release, error) {
 		}
 		sigBody, _, status, err := httpx.GetBytes(ctx, p.client, sigURL, headers, 1<<20, p.retries)
 		if err != nil {
-			return nil, fmt.Errorf("download manifest signature (is %s published?): %w", sigURL, err)
+			return nil, fmt.Errorf("download manifest signature: %w", err)
 		}
 		if status != http.StatusOK {
 			return nil, fmt.Errorf("download manifest signature: unexpected HTTP %d", status)
@@ -112,7 +134,25 @@ func (p *staticProvider) Fetch(ctx context.Context) (*release.Release, error) {
 				asset.Arch = normalized
 			}
 		}
+		// A mirrored manifest usually serves the same relative asset layout.
+		// Resolve relative assets against every configured mirror so a failed
+		// download can move to another host without re-fetching metadata.
+		if !ref.IsAbs() {
+			seen := map[string]bool{asset.URL: true}
+			for _, otherManifest := range allManifestURLs {
+				otherBase, err := url.Parse(otherManifest)
+				if err != nil {
+					continue
+				}
+				u := otherBase.ResolveReference(ref).String()
+				if !seen[u] {
+					seen[u] = true
+					asset.FallbackURLs = append(asset.FallbackURLs, u)
+				}
+			}
+		}
 		rel.Assets = append(rel.Assets, asset)
 	}
+	applyAssetMirrors(rel, cfg.Source.AssetMirrors)
 	return rel, nil
 }

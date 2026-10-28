@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -142,6 +143,7 @@ func New(cfg *config.Config, p platform.Platform, sink event.Sink) (*Engine, err
 		UserAgent:     buildinfo.UserAgent(),
 		AllowInsecure: cfg.Security.AllowInsecureHTTP,
 		AllowedHosts:  cfg.Security.AllowedHosts,
+		Proxy:         cfg.Download.Proxy,
 	})
 	provider, err := source.New(cfg, client, cacheDir)
 	if err != nil {
@@ -598,30 +600,96 @@ func (e *Engine) download(ctx context.Context, st *state.State, rel *release.Rel
 		})
 	}
 	e.emitProgress("download", 0, asset.Size)
-	n, err := httpx.Download(ctx, e.client, httpx.DownloadOptions{
-		URL:             asset.URL,
-		Headers:         asset.Headers,
-		Dest:            dest,
-		ExpectedSHA256:  asset.SHA256,
-		ExpectedSize:    asset.Size,
-		MaxBytes:        e.cfg.Download.MaxBytes,
-		Retries:         e.cfg.Download.Retries,
-		AllowUnverified: !verified,
-		Progress: func(current, total int64) {
-			e.emitProgress("download", current, total)
-		},
-	})
-	if err != nil {
-		code := "download"
-		var se *httpx.StatusError
-		switch {
-		case errors.Is(err, httpx.ErrChecksum), errors.Is(err, io.ErrUnexpectedEOF):
-			code = "integrity"
-		case errors.As(err, &se):
-			code = "network"
+
+	seen := make(map[string]bool)
+	var lastErr error
+	var downloaded int64
+	tryAsset := func(a release.Asset) bool {
+		urls := append([]string{a.URL}, a.FallbackURLs...)
+		primaryHost := hostOfURL(a.URL)
+		for _, rawURL := range urls {
+			if rawURL == "" || seen[rawURL] {
+				continue
+			}
+			seen[rawURL] = true
+			headers := a.Headers
+			if hostOfURL(rawURL) != primaryHost {
+				// Never forward a source token to a mirror on another host.
+				headers = nil
+			}
+			_ = os.Remove(dest + ".part")
+			n, err := httpx.Download(ctx, e.client, httpx.DownloadOptions{
+				URL:             rawURL,
+				Headers:         headers,
+				Dest:            dest,
+				ExpectedSHA256:  a.SHA256,
+				ExpectedSize:    a.Size,
+				MaxBytes:        e.cfg.Download.MaxBytes,
+				Retries:         e.cfg.Download.Retries,
+				AllowUnverified: !verified,
+				Progress: func(current, total int64) {
+					e.emitProgress("download", current, total)
+				},
+			})
+			if err == nil {
+				downloaded = n
+				return true
+			}
+			lastErr = err
+			_ = os.Remove(dest + ".part")
+			if ctx.Err() != nil {
+				return false
+			}
+			e.sink.Emit(event.Event{
+				Type:    event.TypeWarning,
+				Phase:   "download",
+				Message: "download attempt failed; trying the next mirror",
+			})
 		}
-		return "", wrap(code, err)
+		return false
 	}
+
+	if tryAsset(asset) {
+		return e.finishDownload(dest, downloaded, verified)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", wrap("cancelled", err)
+	}
+
+	// A source chain can provide the same version from another mirror after
+	// metadata succeeded but the artifact host is unreachable. The fallback
+	// must have the same SHA-256 as the checked release.
+	if fp, ok := e.provider.(source.FallbackProvider); ok && verified {
+		e.emitLog("download", "primary artifact failed; checking fallback sources")
+		fallbacks, fallbackErr := fp.FallbackReleases(ctx, rel.Version)
+		for _, fallbackRelease := range fallbacks {
+			fallbackAsset, err := selectAsset(fallbackRelease, e.cfg, e.platform)
+			if err != nil || !strings.EqualFold(fallbackAsset.SHA256, asset.SHA256) {
+				continue
+			}
+			if tryAsset(fallbackAsset) {
+				return e.finishDownload(dest, downloaded, verified)
+			}
+		}
+		if fallbackErr != nil && lastErr == nil {
+			lastErr = fallbackErr
+		}
+	}
+	if lastErr == nil {
+		lastErr = errors.New("no download URL succeeded")
+	}
+	code := "download"
+	var se *httpx.StatusError
+	switch {
+	case errors.Is(lastErr, httpx.ErrChecksum), errors.Is(lastErr, io.ErrUnexpectedEOF):
+		code = "integrity"
+	case errors.As(lastErr, &se):
+		code = "network"
+	}
+	return "", wrap(code, lastErr)
+}
+
+func (e *Engine) finishDownload(dest string, n int64, verified bool) (string, error) {
 	if !verified {
 		digest, size, err := checksum.File(dest)
 		if err != nil {
@@ -636,6 +704,14 @@ func (e *Engine) download(ctx context.Context, st *state.State, rel *release.Rel
 		e.emitLog("verify", "SHA-256 verified (%d bytes)", n)
 	}
 	return dest, nil
+}
+
+func hostOfURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return u.Host
 }
 
 func (e *Engine) recordCheck(st *state.State) {

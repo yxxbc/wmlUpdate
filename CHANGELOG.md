@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Ordered multi-source failover (`source.type: chain`), static manifest mirrors,
+  asset mirror templates and same-version/SHA-256 download fallback.
+- Explicit HTTP/HTTPS/SOCKS proxy configuration for all network requests.
+- Optional macOS quarantine removal and ad-hoc app signing for directory
+  installs.
+- A local SDK playground and public testing guide.
+
 ## [0.1.0] - 2026-10-28
 
 ### Added
@@ -25,4 +36,5 @@ All notable changes to this project are documented here. The format follows
 - Diagnostics (`doctor`, `status`), examples and production documentation.
 - Apache-2.0 licensing, project branding and a release CLI.
 
+[Unreleased]: https://github.com/yxxbc/wmlUpdate/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v0.1.0

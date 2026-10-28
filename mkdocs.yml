@@ -88,6 +88,7 @@ nav:
       - 0003 Transactional install: adr/0003-transactional-install.md
       - 0004 Supply-chain verification: adr/0004-supply-chain-verification.md
       - 0005 SDK-first API: adr/0005-sdk-first-public-api.md
+      - 0006 Source chains: adr/0006-source-chains.md
 
 extra:
   social:

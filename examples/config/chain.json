@@ -1,0 +1,56 @@
+{
+  "$schema": "https://raw.githubusercontent.com/yxxbc/wmlUpdate/main/schema/config.schema.json",
+  "schema_version": 1,
+  "app_id": "com.example.myapp",
+  "channel": "stable",
+  "current_version": "1.4.2",
+  "source": {
+    "type": "chain",
+    "sources": [
+      {
+        "type": "github",
+        "owner": "acme",
+        "repo": "myapp",
+        "tag_prefix": "v",
+        "token_env": "GITHUB_TOKEN",
+        "asset_mirrors": [
+          "https://ghproxy.net/https://github.com/{owner}/{repo}/releases/download/{tag}/{asset}",
+          "https://gitee.com/{owner}/{repo}/releases/download/{tag}/{asset}"
+        ]
+      },
+      {
+        "type": "static",
+        "manifest_urls": [
+          "https://cdn.jsdelivr.net/gh/acme/myapp@main/updates/manifest.json",
+          "https://gitee.com/acme/myapp/raw/main/updates/manifest.json",
+          "https://updates.example.com/stable/manifest.json"
+        ]
+      }
+    ]
+  },
+  "asset_rules": [
+    {"os": "darwin", "arch": "arm64", "match": "myapp-{version}-macos-arm64.zip", "format": "zip"},
+    {"os": "windows", "arch": "amd64", "match": "myapp-{version}-windows-amd64.zip", "format": "zip"},
+    {"os": "linux", "arch": "amd64", "match": "myapp-{version}-linux-amd64.tar.gz", "format": "tar.gz"}
+  ],
+  "install": {
+    "type": "directory",
+    "paths": {
+      "darwin": "/Applications/MyApp.app",
+      "windows": "C:\\Program Files\\MyApp",
+      "linux": "/opt/myapp"
+    },
+    "preserve": ["data/**", "config/**"],
+    "macos": {
+      "remove_quarantine": true,
+      "ad_hoc_sign": false
+    }
+  },
+  "download": {
+    "proxy": "",
+    "retries": 3
+  },
+  "security": {
+    "public_key_file": "keys/signing-key.pub.pem"
+  }
+}

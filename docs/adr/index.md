@@ -5,3 +5,4 @@
 - [0003: transactional install](0003-transactional-install.md)
 - [0004: supply-chain verification](0004-supply-chain-verification.md)
 - [0005: SDK-first public API](0005-sdk-first-public-api.md)
+- [0006: ordered source chains](0006-source-chains.md)

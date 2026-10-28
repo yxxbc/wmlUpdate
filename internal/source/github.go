@@ -115,6 +115,8 @@ func (p *githubProvider) Fetch(ctx context.Context) (*release.Release, error) {
 		Prerelease:  selected.Prerelease || selectedVersion.IsPrerelease(),
 		Channel:     cfg.Channel,
 		Source:      "github",
+		Owner:       cfg.Source.Owner,
+		Repo:        cfg.Source.Repo,
 	}
 	for _, a := range selected.Assets {
 		targetURL, assetHeaders := p.assetTarget(a, token)
@@ -132,6 +134,7 @@ func (p *githubProvider) Fetch(ctx context.Context) (*release.Release, error) {
 	if err := p.applyChecksums(ctx, rel, selected.Assets, token); err != nil {
 		return nil, err
 	}
+	applyAssetMirrors(rel, cfg.Source.AssetMirrors)
 	return rel, nil
 }
 

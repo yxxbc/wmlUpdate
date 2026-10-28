@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -261,5 +262,93 @@ func TestChecksumFile(t *testing.T) {
 	digest, size, err := checksum.File(path)
 	if err != nil || size != 3 || len(digest) != 64 {
 		t.Fatalf("checksum = %s %d %v", digest, size, err)
+	}
+}
+
+func TestChainDownloadFallsBackToMirror(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "app")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "app"), []byte("v1"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	build := filepath.Join(root, "build")
+	if err := os.MkdirAll(build, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(build, "app"), []byte("v2"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	zipPath := filepath.Join(root, "app.zip")
+	if err := archive.Create(build, zipPath, "zip"); err != nil {
+		t.Fatal(err)
+	}
+	zipBytes, _ := os.ReadFile(zipPath)
+	sum := sha256.Sum256(zipBytes)
+	p := platform.Current()
+	m := &manifest.Manifest{
+		SchemaVersion: 1, AppID: "com.example.chain", Channel: "stable", Version: "2.0.0",
+		Assets: []manifest.Asset{{Name: "app.zip", OS: p.OS, Arch: p.Arch, URL: "app.zip", SHA256: hex.EncodeToString(sum[:]), Size: int64(len(zipBytes)), Format: "zip"}},
+	}
+	raw, _ := manifest.Marshal(m)
+	primary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manifest.json" {
+			_, _ = w.Write(raw)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer primary.Close()
+	secondary := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manifest.json" {
+			_, _ = w.Write(raw)
+			return
+		}
+		_, _ = w.Write(zipBytes)
+	}))
+	defer secondary.Close()
+
+	cfgPath := filepath.Join(root, "updater.json")
+	body := map[string]any{
+		"schema_version":  1,
+		"app_id":          "com.example.chain",
+		"channel":         "stable",
+		"current_version": "1.0.0",
+		"source": map[string]any{
+			"type": "chain",
+			"sources": []any{
+				map[string]any{"type": "static", "manifest_url": primary.URL + "/manifest.json"},
+				map[string]any{"type": "static", "manifest_url": secondary.URL + "/manifest.json"},
+			},
+		},
+		"asset_rules": []any{map[string]any{"os": p.OS, "arch": p.Arch, "match": "app.zip", "format": "zip"}},
+		"install":     map[string]any{"type": "directory", "path": target},
+		"state_dir":   filepath.Join(root, "state"),
+		"download":    map[string]any{"retries": 0},
+	}
+	data, _ := json.Marshal(body)
+	if err := os.WriteFile(cfgPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eng, err := New(cfg, p, event.NopSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer eng.Close()
+	res, err := eng.Update(context.Background(), UpdateOptions{CurrentVersion: "1.0.0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Status != StatusUpdated {
+		t.Fatalf("result = %+v", res)
+	}
+	if got, _ := os.ReadFile(filepath.Join(target, "app")); string(got) != "v2" {
+		t.Fatalf("installed = %q", got)
 	}
 }
