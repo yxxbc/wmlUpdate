@@ -1154,14 +1154,14 @@
 <p>WML Update follows <a href="https://semver.org/">Semantic Versioning 2.0.0</a>.</p>
 <h2 id="current-status">Current status<a class="headerlink" href="#current-status" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong><code>v1.0.0</code></strong> is the first stable release and freezes the public Go API and
-  package import path.</li>
+<li><strong><code>v1.1.0</code></strong> is the current stable release. <code>v1.0.0</code> remains available as a
+  historical release; both freeze the public Go API and package import path.</li>
 <li><code>v0.1.0</code> was the initial public preview. It remains permanently available for
   reproducibility and must not be retagged or moved.</li>
 <li><code>main</code> may contain changes that are not in the latest release. The documentation
   site publishes <code>dev</code> separately from released versions.</li>
 <li>The nightly workflow publishes prerelease builds such as
-  <code>v1.1.0-nightly.20261028.42.1</code>. They are valid Go module tags but are never
+  <code>v1.2.0-nightly.20261028.42.1</code>. They are valid Go module tags but are never
   <code>latest</code> and are not selected by a stable client.</li>
 </ul>
 <h2 id="one-ordering-version-several-metadata-axes">One ordering version, several metadata axes<a class="headerlink" href="#one-ordering-version-several-metadata-axes" title="Permanent link">&para;</a></h2>
@@ -1251,7 +1251,7 @@ cached it. If a release must be withdrawn, publish a new version and use the
 Go <code>retract</code> directive if appropriate; never rewrite history behind an existing
 tag.</p>
 <p>Pre-releases use SemVer identifiers, for example <code>v1.1.0-rc.1</code> or
-<code>v1.1.0-nightly.20261028.42.1</code>. They are not selected by default and should be
+<code>v1.2.0-nightly.20261028.42.1</code>. They are not selected by default and should be
 treated as unstable. Nightly tags are immutable too; do not reuse a nightly
 version or delete it to "clean up" after clients may have cached it.</p>
 <h2 id="documentation-versions">Documentation versions<a class="headerlink" href="#documentation-versions" title="Permanent link">&para;</a></h2>

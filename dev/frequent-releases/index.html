@@ -1250,10 +1250,10 @@ feed, immutable version numbers, background staging, and a deliberate restart.</
 (or a manual <code>workflow_dispatch</code>) it:</p>
 <ol>
 <li>runs the test suite;</li>
-<li>derives the next minor from the newest reachable stable tag, e.g. <code>v1.0.0</code>
-   becomes base <code>v1.1.0</code>;</li>
+<li>derives the next minor from the newest reachable stable tag, e.g. stable
+   <code>v1.1.0</code> becomes base <code>v1.2.0</code>;</li>
 <li>tags the current <code>main</code> as
-   <code>v1.1.0-nightly.YYYYMMDD.&lt;run-number&gt;.&lt;attempt&gt;</code>;</li>
+   <code>vX.Y.0-nightly.YYYYMMDD.&lt;run-number&gt;.&lt;attempt&gt;</code>;</li>
 <li>builds and publishes a GitHub prerelease with the normal archives, packages,
    checksums and (when configured) <code>checksums.txt.sig</code>.</li>
 </ol>
