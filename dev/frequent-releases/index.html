@@ -569,6 +569,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#this-projects-own-nightly-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        This project's own nightly channel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#publish-a-dedicated-feed-not-a-github-api-call-per-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1066,6 +1077,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#this-projects-own-nightly-channel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        This project's own nightly channel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#publish-a-dedicated-feed-not-a-github-api-call-per-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1196,6 +1218,23 @@ cadence; the host application decides when to check, and the update feed is just
 static metadata with hashes and optional signatures.</p>
 <p>This model follows the approach used by fast-moving desktop apps: a dedicated
 feed, immutable version numbers, background staging, and a deliberate restart.</p>
+<h2 id="this-projects-own-nightly-channel">This project's own nightly channel<a class="headerlink" href="#this-projects-own-nightly-channel" title="Permanent link">&para;</a></h2>
+<p>The repository includes <code>.github/workflows/nightly.yml</code>. On its daily schedule
+(or a manual <code>workflow_dispatch</code>) it:</p>
+<ol>
+<li>runs the test suite;</li>
+<li>derives the next minor from the newest reachable stable tag, e.g. <code>v1.0.0</code>
+   becomes base <code>v1.1.0</code>;</li>
+<li>tags the current <code>main</code> as
+   <code>v1.1.0-nightly.YYYYMMDD.&lt;run-number&gt;.&lt;attempt&gt;</code>;</li>
+<li>builds and publishes a GitHub prerelease with the normal archives, packages,
+   checksums and (when configured) <code>checksums.txt.sig</code>.</li>
+</ol>
+<p>Nightly tags are valid SemVer prereleases. Stable clients ignore them; a nightly
+client opts in explicitly. The docs workflow does not publish a docs version for
+nightly tags; <code>latest</code> remains the newest stable release.</p>
+<p>The workflow does not create a new stable release or move <code>latest</code>. Stable
+releases stay deliberate, annotated tags.</p>
 <h2 id="publish-a-dedicated-feed-not-a-github-api-call-per-check">Publish a dedicated feed, not a GitHub API call per check<a class="headerlink" href="#publish-a-dedicated-feed-not-a-github-api-call-per-check" title="Permanent link">&para;</a></h2>
 <p>Use a static manifest (or a small dynamic endpoint serving the same shape) for
 the hot path:</p>
