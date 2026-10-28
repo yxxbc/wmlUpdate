@@ -1,11 +1,40 @@
 # Integration guide
 
-There are two supported integration surfaces. Both use the same engine and the
+There are three supported integration surfaces. All use the same engine and the
 same result/error semantics.
 
-1. **Subprocess + NDJSON** — universal, no server, no SDK. Recommended default.
-2. **Loopback HTTP API** — useful for desktop apps that want a long-lived
-   updater process, job polling, UI progress, cancellation and SSE.
+1. **Go library** — preferred for Go applications. Two calls, no daemon, no
+   process boundary.
+2. **Subprocess + NDJSON** — universal fallback for other languages, process
+   isolation, or embedding in non-Go build systems.
+3. **Loopback HTTP API** — for desktop apps that want a long-lived updater
+   process, job polling, cancellation and SSE.
+
+## Go library
+
+Import the module and keep the integration to `New`, `Check` and `Apply`:
+
+```go
+import wmlupdate "github.com/yxxbc/wmlUpdate"
+
+u, err := wmlupdate.New(wmlupdate.Options{
+    ConfigPath:     "updater.json",
+    CurrentVersion: appVersion,
+})
+if err != nil { return err }
+defer u.Close()
+
+update, err := u.Check(ctx)
+if err != nil { return err }
+if !update.Available { return nil }
+
+result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{})
+```
+
+`Options.Config` can replace `ConfigPath` for a dependency-only setup. Events are
+an optional callback. The library never exits or restarts the host. See the
+[Go SDK guide](sdk.md) for the complete API, Windows deferred apply, programmatic
+configuration and error codes.
 
 ## Subprocess + NDJSON
 
@@ -151,7 +180,7 @@ the next update recovers any pending journal.
 
 - [Python](../examples/python/update.py)
 - [Node.js](../examples/node/update.js)
-- [Go](../examples/go/main.go)
+- [Go sidecar](../examples/go-cli/main.go)
 - [C#](../examples/csharp/Update.cs)
 - [Shell](../examples/shell/update.sh)
 

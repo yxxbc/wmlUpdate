@@ -134,6 +134,26 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Prepare validates a programmatically constructed configuration, applies
+// defaults and resolves relative paths against baseDir. It is used by the
+// public SDK; Load remains the JSON-file entry point.
+func Prepare(cfg *Config, baseDir string) error {
+	if cfg == nil {
+		return errors.New("nil configuration")
+	}
+	if baseDir == "" {
+		baseDir = "."
+	}
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return fmt.Errorf("resolve base directory: %w", err)
+	}
+	if cfg.File == "" {
+		cfg.File = filepath.Join(absBase, "updater.json")
+	}
+	return cfg.finalize()
+}
+
 // Load reads, expands and validates a JSON configuration file.
 func Load(path string) (*Config, error) {
 	abs, err := filepath.Abs(path)

@@ -8,56 +8,86 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
 </p>
 
-一个面向 **Windows、macOS、Linux** 的小型、安全、语言无关的通用更新器。
+面向 Go 应用的轻量更新**库**，附带发版 CLI，以及供其他语言使用的可选 sidecar。
 
-任何语言的应用都不需要引入 SDK：把单个静态二进制作为子进程调用，读取稳定的
-JSON 行协议，即可获得版本发现、校验下载、事务化安装、回滚、Windows 延迟替换
-和可选的本地 HTTP API。
+将它作为依赖嵌入，只向应用暴露两个操作：
+
+```go
+update, err := updater.Check(ctx)
+if update.Available {
+    result, err := updater.Apply(ctx, update, wmlupdate.ApplyOptions{})
+}
+```
+
+没有守护进程、没有框架、没有全局注册、不要求应用架构。UI、生命周期和重启时机
+始终由宿主应用掌握。
 
 [English](README.md)
 
-## 为什么
+## 为什么做成库
 
-自己实现更新器要同时处理三个操作系统、断点续传、被篡改的安装包、zip-slip、
-符号链接逃逸、Windows 运行中文件锁定、回滚，以及如何向任意语言的 UI 汇报进度。
-WML Update 把这些能力收敛到一个可审计的 Go 二进制中：
+更新器真正困难的是断点续传、篡改校验、三种文件系统模型、Windows 运行中文件、
+回滚、崩溃恢复、签名和进度反馈。WML Update 把这些能力收在一个刻意很小的
+Go API 后面：
 
-- **单二进制、无运行时依赖**，覆盖 Windows / macOS / Linux，`amd64` / `arm64`。
-- **GitHub Release 与自托管静态清单**两种更新源。
-- **任意语言可集成**：CLI + NDJSON，或本地 HTTP API。
-- **每个安装包强制 SHA-256**，可选 **Ed25519 分离签名**，TLS 强制与域名白名单。
-- **目录/单文件事务化替换**，保留备份、崩溃恢复与 `rollback`。
-- **安全解压**：拒绝路径穿越、逃逸符号链接、硬链接、特殊文件、超大解压和条目轰炸。
-- **断点续传**、有界重试和 `.part` 文件。
-- **延迟应用助手**，解决 Windows 应用运行中无法替换的问题。
-- **自托管发布工具**：打包、哈希、签名、清单与校验文件生成。
+```go
+u, err := wmlupdate.New(wmlupdate.Options{
+    ConfigPath:     "updater.json",
+    CurrentVersion: appVersion,
+})
+if err != nil { return err }
+defer u.Close()
+
+update, err := u.Check(ctx)
+if err != nil || !update.Available { return err }
+
+result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{})
+```
+
+`Check` 只读；`Apply` 安装刚才检查到的确切版本，下载并校验后再落盘。进度通过可选
+回调提供，最终结果是返回值。同一引擎还提供：
+
+- **发版 CLI**：打包、签名、清单与校验文件；
+- **可选 sidecar CLI + NDJSON + HTTP API**：给无法直接导入 Go 库的语言使用。
+
+## 特性
+
+- **Go 库**：公开 API 只有 `Check` 和 `Apply`。
+- **低侵入**：无守护进程、无服务、无 UI 框架、无事件循环绑定。
+- **Windows / macOS / Linux**，`amd64` / `arm64`；可选 sidecar 为单个 CGO-free 二进制。
+- **GitHub Releases 或自托管静态清单**两种更新源。
+- **所有安装包强制 SHA-256**，可选 **Ed25519 分离签名**、HTTPS 与域名白名单。
+- **目录/单文件事务化安装**，保留备份、崩溃恢复和回滚数据。
+- **安全解压**：路径穿越、符号链接逃逸、硬链接、特殊文件、条目/膨胀限制。
+- **断点续传**与有界重试。
+- **Windows 延迟应用**：应用仍在运行时也可替换。
+- **发版工具**：归档、哈希、签名、清单和校验文件生成。
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/yxxbc/wmlUpdate/releases) 下载，校验
-`checksums.txt` 后把 `wml-update` / `wml-update.exe` 放入 `PATH`。
-
 ```bash
-wml-update version
+go get github.com/yxxbc/wmlUpdate
 ```
 
-从源码构建：
+```go
+import wmlupdate "github.com/yxxbc/wmlUpdate"
+```
+
+CLI 可从 Release 下载，或从源码安装：
 
 ```bash
 go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest
 ```
 
-## 快速开始：GitHub Release
+## 配置
 
-`updater.json`：
+库支持完整 `updater.json`，也支持纯 Go 的 `wmlupdate.Config`。最小 GitHub 配置：
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/yxxbc/wmlUpdate/main/schema/config.schema.json",
   "schema_version": 1,
   "app_id": "com.example.myapp",
   "channel": "stable",
-  "current_version": "1.0.0",
   "source": {
     "type": "github",
     "owner": "acme",
@@ -82,16 +112,66 @@ go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest
 }
 ```
 
-```bash
-wml-update --config updater.json check
-wml-update --config updater.json update --current-version 1.0.0
+或用 Go 直接配置：
+
+```go
+u, err := wmlupdate.New(wmlupdate.Options{
+    CurrentVersion: appVersion,
+    Config: &wmlupdate.Config{
+        AppID: "com.example.myapp",
+        Source: wmlupdate.SourceConfig{
+            Type: wmlupdate.SourceGitHub, Owner: "acme", Repo: "myapp",
+        },
+        Install: wmlupdate.InstallConfig{
+            Type: wmlupdate.InstallDirectory, Path: "/opt/myapp",
+        },
+    },
+})
 ```
 
-GitHub Release 中需上传符合 `asset_rules` 命名的安装包，以及 `checksums.txt`。
-GitHub 返回 asset `digest` 时会自动使用。配置
-`security.public_key_file` 并上传 `checksums.txt.sig` 后，校验文件必须带有效签名。
+详见 [SDK 指南](docs/sdk.md) 和 [配置参考](docs/configuration.md)。
 
-## 快速开始：自托管
+## 在 Go 中集成
+
+```go
+u, err := wmlupdate.New(wmlupdate.Options{
+    ConfigPath:     "updater.json",
+    CurrentVersion: appVersion,
+    Events: func(e wmlupdate.Event) {
+        if e.Type == wmlupdate.EventProgress {
+            reportProgress(e.Percent)
+        }
+    },
+})
+if err != nil { return err }
+defer u.Close()
+
+update, err := u.Check(ctx)
+if err != nil { return err }
+if !update.Available {
+    return nil
+}
+
+result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{})
+if err != nil { return err }
+log.Printf("updated %s -> %s", result.PreviousVersion, result.Version)
+```
+
+Windows 下目标正在运行时：
+
+```go
+result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{
+    Defer:    true,
+    WaitPIDs: []int{os.Getpid()},
+})
+// StatusApplyScheduled：应用退出后由独立 helper 完成替换。
+```
+
+库不会调用 `os.Exit`，也不会擅自重启进程；这始终是应用自己的决定。
+
+## 打包发版
+
+CLI 包含发版工作流，可发布到 GitHub Releases 或任意静态站点：
 
 ```bash
 wml-update keygen --out-dir keys
@@ -107,72 +187,48 @@ wml-update publish --spec publish.json --out public/stable --key keys/signing-ke
   "channel": "stable",
   "notes": "修复与改进",
   "assets": [
-    {"dir": "dist/MyApp", "url": "myapp-1.2.0-linux-amd64.tar.gz", "os": "linux", "arch": "amd64", "format": "tar.gz"},
-    {"dir": "dist/MyApp", "url": "myapp-1.2.0-windows-amd64.zip", "os": "windows", "arch": "amd64", "format": "zip"}
+    {"dir": "dist/app-linux", "url": "myapp-1.2.0-linux-amd64.tar.gz", "os": "linux", "arch": "amd64", "format": "tar.gz"},
+    {"dir": "dist/app-windows", "url": "myapp-1.2.0-windows-amd64.zip", "os": "windows", "arch": "amd64", "format": "zip"}
   ]
 }
 ```
 
-把 `manifest.json`、`manifest.json.sig` 和安装包上传到任意静态站点。配置：
+输出 `manifest.json`、`manifest.json.sig`、`checksums.txt` 和
+`checksums.txt.sig`。先上传安装包，最后上传清单。详见
+[自托管](docs/self-hosting.md) 与 [GitHub Releases](docs/github-releases.md)。
 
-```json
-{
-  "app_id": "com.example.myapp",
-  "channel": "stable",
-  "current_version": "1.0.0",
-  "source": {
-    "type": "static",
-    "manifest_url": "https://updates.example.com/stable/manifest.json"
-  },
-  "install": {
-    "type": "directory",
-    "path": "/opt/myapp"
-  },
-  "security": {
-    "public_key_file": "keys/signing-key.pub.pem"
-  }
-}
-```
+## 其他语言
 
-详见 [自托管指南](docs/self-hosting.md)。
-
-## 任意语言集成
-
-以 `--json` 启动子进程。stdout 每行一个 JSON 对象，日志和进度也是数据，
-不会混入普通文本；stderr 可用于诊断。
+Go 库无法被 Python、Node.js、Java、C# 直接导入。这些应用使用可选 sidecar：
 
 ```bash
 wml-update --config updater.json --json update --current-version 1.0.0
 ```
 
-```json
-{"type":"progress","phase":"download","bytes":1048576,"total":4194304,"percent":25}
-{"type":"result","status":"updated","previous_version":"1.0.0","current_version":"1.1.0"}
+stdout 每行一个 JSON 对象，stderr 用于诊断。同一引擎也可通过以下命令提供
+带 token 的本机 HTTP API（异步任务与 SSE）：
+
+```bash
+wml-update --config updater.json serve --json
 ```
 
-- `check`：只检查，不下载。
-- `fetch`：只下载并校验，返回路径。
-- `mark`：应用自己完成安装后，记录新版本。
-- `serve`：本地 token 鉴权 HTTP API，支持异步任务与 SSE 进度流。
+详见 [集成文档](docs/integration.md) 与
+[Python](examples/python)、[Node.js](examples/node)、[C#](examples/csharp)、
+[Shell](examples/shell)、[Go SDK](examples/go)、[CLI Go](examples/go-cli) 示例。
 
-完整协议与各语言示例：[集成文档](docs/integration.md)。示例代码：
-[Python](examples/python)、[Node.js](examples/node)、[Go](examples/go)、
-[C#](examples/csharp)、[Shell](examples/shell)。
+## CLI 命令
 
-## 常用命令
+对 Go 应用来说 CLI 是可选的，它包含发版工具与 sidecar 适配器。
 
 | 命令 | 作用 |
 | --- | --- |
-| `check` | 检查更新，不下载 |
-| `update` | 检查、下载、校验并安装 |
-| `update --defer --wait-pid <pid>` | 先准备，待应用退出后由独立助手应用 |
-| `fetch --output app.zip` | 仅下载并校验 |
-| `rollback` | 恢复最近一次备份 |
-| `status` | 查看版本、备份和未完成事务 |
-| `serve` | 本地 HTTP API |
 | `publish` | 生成自托管清单、校验文件和签名 |
-| `keygen` / `sign` / `verify` | Ed25519 签名工具 |
-| `doctor` | 诊断配置、权限、状态与更新源 |
+| `keygen` / `sign` / `verify` | Ed25519 发版签名工具 |
+| `check` / `update` | sidecar 检查与应用；`--json` 输出 NDJSON |
+| `update --defer --wait-pid <pid>` | 目标运行中时延迟应用 |
+| `fetch --output app.zip` | 仅下载并校验 |
+| `rollback` / `status` / `doctor` | 运维恢复与诊断 |
+| `serve` | 本机 HTTP 集成 API |
 
 ## 安全默认值
 
@@ -184,17 +240,18 @@ wml-update --config updater.json --json update --current-version 1.0.0
 - 重定向会重新检查协议、域名白名单和跳转次数。
 - 解压拒绝绝对路径、路径穿越、逃逸符号链接、硬链接、设备文件和超限膨胀。
 - 目录安装采用暂存 + 事务交换；保留上一版本用于回滚，中断后由日志自动恢复。
-- HTTP API 必须携带 token，默认只监听回环地址。
+- HTTP 适配器必须携带 token，默认只监听回环地址。
 
 请阅读 [安全模型](docs/security.md)。目录安装会管理整个目标目录：新版本中不存在、
 且未被 `install.preserve` 匹配的文件会被删除。请指向应用自管目录，不要指向用户主目录。
 
 ## 文档
 
+- [Go SDK](docs/sdk.md)
 - [架构](docs/architecture.md)
 - [配置参考](docs/configuration.md)
 - [清单格式](docs/manifest.md)
-- [集成指南](docs/integration.md)
+- [集成与 sidecar 协议](docs/integration.md)
 - [自托管更新](docs/self-hosting.md)
 - [GitHub Releases](docs/github-releases.md)
 - [安全模型](docs/security.md)

@@ -2,18 +2,22 @@
 
 ## Goals
 
-1. One codebase and one binary covering Windows, macOS and Linux.
-2. A stable integration contract usable from any language.
-3. Authenticated metadata and verified artifacts.
-4. Safe, recoverable installation.
-5. Useful diagnostics, not silent failure.
+1. A small Go library that embeds in an existing application without taking
+   over its architecture.
+2. One codebase covering Windows, macOS and Linux.
+3. A stable contract for non-Go languages through optional adapters.
+4. Authenticated metadata and verified artifacts.
+5. Safe, recoverable installation.
+6. Useful diagnostics, not silent failure.
 
 ## Non-goals
 
+- A framework or application runtime. The SDK exposes Check and Apply; the host
+  owns UI, lifecycle and restart.
+- A required daemon or service. The CLI/HTTP adapters are optional.
 - Delta updates. A full artifact is downloaded; content-addressed caching avoids
   re-downloading the same bytes.
-- A background service or system-wide scheduler. The host application decides
-  when to check.
+- A system-wide scheduler. The host application decides when to check.
 - Arbitrary package-manager integration. The `command` strategy can invoke one,
   but rollback is owned by that installer.
 - Code signing. The updater preserves bytes; macOS notarization and Windows
@@ -23,42 +27,71 @@
 ## Component map
 
 ```text
+github.com/yxxbc/wmlUpdate (package wmlupdate)
+  └─ public SDK: New, Check, Apply, Options, Config, Event
+       └─ internal/engine ──────── orchestration, checked snapshots, results
+            ├─ internal/source ──┬─ github.go   Releases API + checksums
+            │                    └─ static.go   signed manifest + sidecar
+            ├─ internal/httpx ──── hardened client, retry, resumable download
+            ├─ internal/manifest  manifest model, validation, signature
+            ├─ internal/checksum  SHA-256 and sha256sum parsing
+            ├─ internal/install ─┬─ Prepare    staging / extract / preserve
+            │                    └─ Apply      journal, backup, swap, rollback
+            ├─ internal/archive   safe zip/tar extraction and creation
+            ├─ internal/state     atomic JSON state and install journal
+            ├─ internal/lock      per-app advisory lock
+            └─ internal/sign      Ed25519 keys and detached signatures
+
 cmd/wml-update
-  └─ internal/cli ──────────────── commands, JSON event output, exit codes
-       ├─ internal/engine ──────── orchestration, current-version policy, results
-       │    ├─ internal/source ──┬─ github.go   Releases API + checksums
-       │    │                   └─ static.go   signed manifest + sidecar
-       │    ├─ internal/httpx ─── hardened client, retry, resumable download
-       │    ├─ internal/manifest  manifest model, validation, signature
-       │    ├─ internal/checksum  SHA-256 and sha256sum parsing
-       │    ├─ internal/install ─┬─ Prepare    staging / extract / preserve
-       │    │                   └─ Apply      journal, backup, swap, rollback
-       │    ├─ internal/archive   safe zip/tar extraction and creation
-       │    ├─ internal/state     atomic JSON state and install journal
-       │    ├─ internal/lock      per-app advisory lock
-       │    └─ internal/sign      Ed25519 keys and detached signatures
+  └─ internal/cli ──────────────── commands, release tooling, sidecar adapter
+       ├─ internal/engine ──────── same engine as the SDK
        └─ internal/api ─────────── optional loopback HTTP API, jobs, SSE
+
+internal/publish ───────────────── release archive/manifest/checksum tooling
 ```
 
+The **SDK is the primary product**. `cmd/wml-update` is optional: it packages
+releases (`publish`, `keygen`, `sign`, `verify`) and exposes the same engine to
+non-Go languages through NDJSON and HTTP. It does not participate in a Go
+application's runtime unless the application chooses the sidecar mode.
+
 Supporting packages: `internal/version` (strict SemVer), `internal/platform`
-(normalization and asset heuristics), `internal/event` (NDJSON contract),
-`internal/config` (strict JSON loading, validation, defaults),
-`internal/publish` (release tooling), `internal/buildinfo` (ldflags).
+(normalization and asset heuristics), `internal/event` (event contract),
+`internal/config` (strict JSON loading, programmatic preparation, validation),
+`internal/buildinfo` (ldflags).
+
+## Public SDK surface
+
+```go
+type Options struct {
+    ConfigPath, BaseDir, CurrentVersion string
+    Config   *Config
+    Platform *Platform
+    Events   EventFunc
+}
+
+func New(Options) (*Updater, error)
+func (*Updater) Check(context.Context) (*Update, error)
+func (*Updater) Apply(context.Context, *Update, ApplyOptions) (*Result, error)
+func (*Updater) Close()
+```
+
+`Update` is an opaque checked snapshot: public fields are informational, while
+the exact release and selected asset are retained privately. `Apply` validates
+and uses that snapshot, so a source change between Check and Apply cannot swap
+the artifact silently. `Update` values are not serializable.
 
 ## Update flow
 
 ```text
-check/update
+Check / Apply
    │
    ├─ load strict config, resolve target platform
-   ├─ determine current version (flag > config > state)
-   ├─ acquire per-app lock (mutations only)
+   ├─ determine current version (explicit > state > config)
+   ├─ Check: fetch metadata, select asset, compare versions (read-only)
+   ├─ Apply: acquire per-app lock
    ├─ recover interrupted transaction (if any)
-   ├─ fetch release metadata
-   │    ├─ GitHub: Releases API, SemVer selection, checksums/signatures
-   │    └─ static: manifest bytes → signature → parse → channel/app checks
-   ├─ select platform asset (rules → metadata → heuristic)
-   ├─ compare SemVer
+   ├─ use the exact checked release snapshot (no metadata re-fetch)
    ├─ download to state/downloads with Range resume and retry
    ├─ verify size + SHA-256 (and authenticated hash source)
    ├─ install strategy:
@@ -193,3 +226,4 @@ The same shapes are returned by the HTTP job API. See
 - [ADR 0002: subprocess NDJSON plus local HTTP](adr/0002-subprocess-json-and-http.md)
 - [ADR 0003: transactional replace with backups](adr/0003-transactional-install.md)
 - [ADR 0004: supply-chain verification](adr/0004-supply-chain-verification.md)
+- [ADR 0005: SDK-first public API](adr/0005-sdk-first-public-api.md)

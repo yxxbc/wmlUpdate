@@ -8,6 +8,10 @@ A JSON Schema is published at
 [`schema/config.schema.json`](../schema/config.schema.json). Editors that support
 `$schema` will autocomplete the file.
 
+Go applications can either point the SDK at this file (`Options.ConfigPath`) or
+build the equivalent [`wmlupdate.Config`](sdk.md) in code. Programmatic
+durations use `time.Duration`; JSON uses duration strings such as `"15m"`.
+
 ## Discovery
 
 The configuration path is selected in this order:

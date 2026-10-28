@@ -161,8 +161,28 @@ func New(cfg *config.Config, p platform.Platform, sink event.Sink) (*Engine, err
 // Close releases idle HTTP connections.
 func (e *Engine) Close() { e.client.CloseIdleConnections() }
 
+// Check is an internal release candidate with the resolved asset. It is
+// exported only inside the module so the public SDK can apply a checked release
+// without re-fetching mutable source metadata.
+type Check struct {
+	Result  *Result
+	Current version.Version
+	Release *release.Release
+	Asset   release.Asset
+}
+
 // Check reports whether a newer release exists without downloading it.
 func (e *Engine) Check(ctx context.Context, currentVersion string) (*Result, error) {
+	chk, err := e.CheckDetailed(ctx, currentVersion)
+	if err != nil {
+		return nil, err
+	}
+	return chk.Result, nil
+}
+
+// CheckDetailed resolves the current version, fetches the latest release and
+// selects a platform asset.
+func (e *Engine) CheckDetailed(ctx context.Context, currentVersion string) (*Check, error) {
 	st, err := e.store.Load(e.cfg.AppID)
 	if err != nil {
 		return nil, wrap("state", err)
@@ -174,7 +194,7 @@ func (e *Engine) Check(ctx context.Context, currentVersion string) (*Result, err
 	return e.checkWith(ctx, current)
 }
 
-func (e *Engine) checkWith(ctx context.Context, current version.Version) (*Result, error) {
+func (e *Engine) checkWith(ctx context.Context, current version.Version) (*Check, error) {
 	e.emitLog("source", "querying %s source", e.provider.Name())
 	rel, err := e.provider.Fetch(ctx)
 	if err != nil {
@@ -223,7 +243,7 @@ func (e *Engine) checkWith(ctx context.Context, current version.Version) (*Resul
 	} else {
 		res.Status = StatusUpToDate
 	}
-	return res, nil
+	return &Check{Result: res, Current: current, Release: rel, Asset: asset}, nil
 }
 
 // Update checks, downloads, verifies and installs the latest release.
@@ -248,15 +268,57 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions) (*Result, error
 	if err != nil {
 		return nil, err
 	}
-	res, rel, asset, err := e.resolveUpdate(ctx, current, opts.Force)
+	chk, err := e.checkWith(ctx, current)
 	if err != nil {
 		return nil, err
 	}
-	if res.Status == StatusUpToDate {
+	if opts.Force {
+		chk.Result.Status = StatusUpdateAvailable
+	}
+	if chk.Result.Status == StatusUpToDate {
 		e.recordCheck(st)
 		_ = e.store.Save(st)
-		return res, nil
+		return chk.Result, nil
 	}
+	return e.installChecked(ctx, st, mgr, chk, opts)
+}
+
+// ApplyChecked installs a release previously returned by CheckDetailed. It does
+// not re-fetch metadata: the source release and selected asset are retained in
+// the Check value and the artifact is still downloaded and verified.
+func (e *Engine) ApplyChecked(ctx context.Context, chk *Check, opts UpdateOptions) (*Result, error) {
+	if chk == nil || chk.Result == nil || chk.Release == nil {
+		return nil, fail("no_update", "no checked update was supplied")
+	}
+	if chk.Result.Status != StatusUpdateAvailable {
+		return nil, fail("no_update", "release %s is not newer than the current version", chk.Result.LatestVersion)
+	}
+	if opts.Defer && e.cfg.Install.Type == "external" {
+		return nil, fail("config", "--defer cannot be used with install.type external")
+	}
+	lk, err := e.acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer lk.Release()
+	st, mgr, err := e.loadForWrite()
+	if err != nil {
+		return nil, err
+	}
+	if err := e.recover(mgr); err != nil {
+		return nil, err
+	}
+	return e.installChecked(ctx, st, mgr, chk, opts)
+}
+
+func (e *Engine) installChecked(ctx context.Context, st *state.State, mgr *install.Manager, chk *Check, opts UpdateOptions) (*Result, error) {
+	if opts.Defer && e.cfg.Install.Type == "external" {
+		return nil, fail("config", "--defer cannot be used with install.type external")
+	}
+	current := chk.Current
+	rel := chk.Release
+	asset := chk.Asset
+	res := cloneResult(chk.Result)
 
 	artifactPath, err := e.download(ctx, st, rel, asset)
 	if err != nil {
@@ -313,58 +375,6 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions) (*Result, error
 	return res, nil
 }
 
-func (e *Engine) resolveUpdate(ctx context.Context, current version.Version, force bool) (*Result, *release.Release, release.Asset, error) {
-	e.emitLog("source", "querying %s source", e.provider.Name())
-	rel, err := e.provider.Fetch(ctx)
-	if err != nil {
-		if errors.Is(err, source.ErrNoRelease) {
-			return nil, nil, release.Asset{}, wrap("no_release", err)
-		}
-		return nil, nil, release.Asset{}, wrap("source", err)
-	}
-	asset, err := selectAsset(rel, e.cfg, e.platform)
-	if err != nil {
-		return nil, nil, release.Asset{}, wrap("no_asset", err)
-	}
-	if asset.SHA256 == "" && !e.cfg.Security.AllowUnverifiedAssets {
-		return nil, nil, release.Asset{}, fail("integrity", "release %s has no SHA-256 for %s and security.allow_unverified_assets is false", rel.Tag, asset.Name)
-	}
-	if asset.SHA256 != "" && !validSHA256(asset.SHA256) {
-		return nil, nil, release.Asset{}, fail("integrity", "release %s has an invalid SHA-256 for %s", rel.Tag, asset.Name)
-	}
-	if err := e.validateAsset(asset); err != nil {
-		return nil, nil, release.Asset{}, err
-	}
-	res := &Result{
-		CurrentVersion: current.String(),
-		LatestVersion:  rel.Version.String(),
-		Channel:        rel.Channel,
-		Source:         rel.Source,
-		Tag:            rel.Tag,
-		Notes:          truncate(rel.Notes, 256<<10),
-		Mandatory:      rel.Mandatory,
-		Prerelease:     rel.Prerelease,
-		Asset: &AssetInfo{
-			Name:   asset.Name,
-			OS:     asset.OS,
-			Arch:   asset.Arch,
-			Format: asset.Format,
-			SHA256: strings.ToLower(asset.SHA256),
-			Size:   asset.Size,
-		},
-	}
-	if !rel.PublishedAt.IsZero() {
-		t := rel.PublishedAt.UTC()
-		res.PublishedAt = &t
-	}
-	if rel.Version.Compare(current) > 0 || force {
-		res.Status = StatusUpdateAvailable
-	} else {
-		res.Status = StatusUpToDate
-	}
-	return res, rel, asset, nil
-}
-
 // Fetch downloads and verifies an artifact without installing it.
 func (e *Engine) Fetch(ctx context.Context, opts FetchOptions) (*Result, error) {
 	lk, err := e.acquire(ctx)
@@ -380,14 +390,15 @@ func (e *Engine) Fetch(ctx context.Context, opts FetchOptions) (*Result, error) 
 	if err != nil {
 		return nil, err
 	}
-	res, rel, asset, err := e.resolveUpdate(ctx, current, false)
+	chk, err := e.checkWith(ctx, current)
 	if err != nil {
 		return nil, err
 	}
+	res := chk.Result
 	if res.Status == StatusUpToDate {
 		return res, nil
 	}
-	artifactPath, err := e.download(ctx, st, rel, asset)
+	artifactPath, err := e.download(ctx, st, chk.Release, chk.Asset)
 	if err != nil {
 		return nil, err
 	}
@@ -657,6 +668,22 @@ func (e *Engine) validateAsset(asset release.Asset) error {
 	default:
 		return fail("no_asset", "directory installs require a zip, tar.gz or tar artifact; asset %s has format %q", asset.Name, asset.Format)
 	}
+}
+
+func cloneResult(r *Result) *Result {
+	if r == nil {
+		return nil
+	}
+	c := *r
+	if r.Asset != nil {
+		a := *r.Asset
+		c.Asset = &a
+	}
+	if r.PublishedAt != nil {
+		t := *r.PublishedAt
+		c.PublishedAt = &t
+	}
+	return &c
 }
 
 func validSHA256(s string) bool {
