@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yxxbc/wmlUpdate/main/schema/config.schema.json",
+  "title": "wml-update configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["app_id", "source", "install"],
+  "properties": {
+    "$schema": {"type": "string", "format": "uri-reference"},
+    "schema_version": {"const": 1, "default": 1},
+    "app_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "description": "Stable application identifier used for state isolation."
+    },
+    "channel": {
+      "type": "string",
+      "default": "stable",
+      "description": "Update channel. For GitHub, any channel other than stable includes prereleases."
+    },
+    "current_version": {
+      "type": "string",
+      "description": "Fallback current version. Prefer --current-version from the running app."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["github", "static"]},
+        "owner": {"type": "string"},
+        "repo": {"type": "string"},
+        "api_base": {"type": "string", "format": "uri", "default": "https://api.github.com"},
+        "tag_prefix": {"type": "string"},
+        "token_env": {"type": "string", "description": "Environment variable holding a GitHub token."},
+        "include_prerelease": {"type": "boolean", "default": false},
+        "manifest_url": {"type": "string", "format": "uri"},
+        "headers": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Additional HTTP headers for the static source. Values support ${ENV_VAR} expansion."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "github"}}},
+          "then": {"required": ["owner", "repo"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "static"}}},
+          "then": {"required": ["manifest_url"]}
+        }
+      ]
+    },
+    "asset_rules": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "os": {"type": "string"},
+          "arch": {"type": "string"},
+          "match": {
+            "type": "string",
+            "description": "Glob matched against the asset name. Supports {version}, {tag}, {os}, {arch} placeholders and * wildcards."
+          },
+          "format": {
+            "enum": ["zip", "tar.gz", "tgz", "tar", "gz", "raw", "bin", "exe", "msi", "pkg", "dmg"]
+          }
+        }
+      }
+    },
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {"enum": ["directory", "file", "command", "external"]},
+        "path": {"type": "string"},
+        "paths": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Keys are OS names (windows, darwin, linux) or os-arch pairs."
+        },
+        "strip_components": {"type": "integer", "minimum": 0, "maximum": 32, "default": 0},
+        "preserve": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Relative doublestar globs copied from the existing install into the staged update."
+        },
+        "file_mode": {"type": "string", "pattern": "^0?[0-7]{3,4}$"},
+        "keep_backups": {"type": "integer", "minimum": 0, "maximum": 10, "default": 1},
+        "command": {"type": "string"},
+        "args": {"type": "array", "items": {"type": "string"}},
+        "workdir": {"type": "string"},
+        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "default": "30m"
+        },
+        "relaunch_path": {"type": "string"},
+        "relaunch_args": {"type": "array", "items": {"type": "string"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"enum": ["directory", "file"]}}},
+          "then": {
+            "anyOf": [
+              {"required": ["path"]},
+              {"required": ["paths"]}
+            ]
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "command"}}},
+          "then": {"required": ["command"]}
+        }
+      ]
+    },
+    "state_dir": {"type": "string"},
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public_key": {"type": "string", "description": "Inline PEM or base64 raw Ed25519 public key."},
+        "public_key_file": {"type": "string"},
+        "checksums_asset": {"type": "string", "default": "checksums.txt"},
+        "checksums_signature_asset": {"type": "string", "default": "checksums.txt.sig"},
+        "allowed_hosts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Optional host allowlist, including wildcard subdomains such as *.example.com."
+        },
+        "allow_insecure_http": {"type": "boolean", "default": false},
+        "allow_unverified_assets": {"type": "boolean", "default": false}
+      }
+    },
+    "download": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_bytes": {"type": "integer", "minimum": 1, "default": 2147483648},
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+          "default": "30m"
+        },
+        "retries": {"type": "integer", "minimum": 0, "maximum": 10, "default": 3}
+      }
+    }
+  }
+}

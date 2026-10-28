@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/yxxbc/wmlUpdate/main/schema/config.schema.json",
+  "schema_version": 1,
+  "app_id": "com.example.myapp",
+  "channel": "stable",
+  "current_version": "1.4.2",
+  "source": {
+    "type": "github",
+    "owner": "acme",
+    "repo": "myapp",
+    "tag_prefix": "v",
+    "token_env": "GITHUB_TOKEN",
+    "include_prerelease": false
+  },
+  "asset_rules": [
+    {"os": "darwin", "arch": "arm64", "match": "myapp-{version}-macos-arm64.zip", "format": "zip"},
+    {"os": "darwin", "arch": "amd64", "match": "myapp-{version}-macos-amd64.zip", "format": "zip"},
+    {"os": "windows", "arch": "amd64", "match": "myapp-{version}-windows-amd64.zip", "format": "zip"},
+    {"os": "linux", "arch": "amd64", "match": "myapp-{version}-linux-amd64.tar.gz", "format": "tar.gz"},
+    {"os": "linux", "arch": "arm64", "match": "myapp-{version}-linux-arm64.tar.gz", "format": "tar.gz"}
+  ],
+  "install": {
+    "type": "directory",
+    "paths": {
+      "darwin": "/Applications/MyApp.app",
+      "windows": "C:\\Program Files\\MyApp",
+      "linux": "/opt/myapp"
+    },
+    "preserve": ["data/**", "config/**"],
+    "keep_backups": 1
+  },
+  "security": {
+    "public_key_file": "keys/signing-key.pub.pem",
+    "allowed_hosts": [
+      "api.github.com",
+      "github.com",
+      "objects.githubusercontent.com",
+      "release-assets.githubusercontent.com"
+    ]
+  },
+  "download": {
+    "max_bytes": 536870912,
+    "timeout": "20m",
+    "retries": 3
+  }
+}

@@ -1,0 +1,25 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - errorlint
+    - copyloopvar
+    - misspell
+    - revive
+    - unconvert
+    - wastedassign
+  disable:
+    - depguard
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck

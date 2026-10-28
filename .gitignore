@@ -1,0 +1,29 @@
+# Build output
+/dist/
+/bin/
+/wml-update
+/wml-update.exe
+/go
+
+# Local state and test artifacts
+/updater.local.json
+/state/
+*.part
+*.test
+*.out
+coverage.out
+coverage.html
+__pycache__/
+*.pyc
+
+# Signing material must never be committed
+*.pem
+*.key
+!examples/**/README*
+keys/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

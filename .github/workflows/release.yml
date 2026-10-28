@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./... -count=1
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
+            dist/checksums.txt
+
+  sign:
+    name: Sign checksums
+    needs: release
+    if: ${{ vars.WML_SIGNING_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      WML_SIGNING_KEY: ${{ secrets.WML_SIGNING_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Download checksums
+        run: |
+          mkdir -p dist
+          gh release download "$GITHUB_REF_NAME" --pattern checksums.txt --dir dist
+      - name: Sign checksums
+        run: |
+          set -euo pipefail
+          test -n "$WML_SIGNING_KEY"
+          umask 077
+          printf '%s' "$WML_SIGNING_KEY" > "$RUNNER_TEMP/signing-key.pem"
+          go run ./cmd/wml-update sign --key "$RUNNER_TEMP/signing-key.pem" dist/checksums.txt
+          gh release upload "$GITHUB_REF_NAME" dist/checksums.txt.sig --clobber
+          rm -f "$RUNNER_TEMP/signing-key.pem"

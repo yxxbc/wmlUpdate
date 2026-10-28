@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible updater problem
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report security vulnerabilities here. Use SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: wml-update version and platform
+      placeholder: "wml-update 0.1.0, Windows 11 amd64"
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Update source
+      options: [GitHub Releases, Self-hosted static manifest, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Redacted relevant configuration
+      description: Remove tokens, private keys and internal hostnames.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Include `--json` events and `wml-update doctor` output where possible.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I am not reporting a security vulnerability
+          required: true
+        - label: I removed secrets from the report
+          required: true
