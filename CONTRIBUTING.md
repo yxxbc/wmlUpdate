@@ -68,4 +68,5 @@ signature. Never put the private key in the repository or an artifact.
 
 ## License
 
-By contributing, you agree your contribution is licensed under the MIT License.
+By contributing, you agree your contribution is licensed under the Apache
+License 2.0 and that you have the right to submit it.

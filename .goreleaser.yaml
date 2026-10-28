@@ -39,6 +39,7 @@ archives:
           - zip
     files:
       - LICENSE
+      - NOTICE
       - README.md
       - README.zh-CN.md
 
@@ -53,7 +54,7 @@ nfpms:
     homepage: https://github.com/yxxbc/wmlUpdate
     maintainer: WML Update contributors
     description: Cross-platform updater for GitHub Releases and self-hosted manifests
-    license: MIT
+    license: Apache-2.0
     formats:
       - deb
       - rpm
@@ -62,6 +63,8 @@ nfpms:
     contents:
       - src: LICENSE
         dst: /usr/share/doc/wml-update/LICENSE
+      - src: NOTICE
+        dst: /usr/share/doc/wml-update/NOTICE
       - src: README.md
         dst: /usr/share/doc/wml-update/README.md
 

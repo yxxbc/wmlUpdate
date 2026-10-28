@@ -12,6 +12,7 @@ set -eu
 REPO="yxxbc/wmlUpdate"
 VERSION="${VERSION:-}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+INSTALL_DIR="${INSTALL_DIR%/}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
@@ -70,6 +71,13 @@ tmp_install="$INSTALL_DIR/.wml-update.$$"
 cp "$bin" "$tmp_install"
 chmod 0755 "$tmp_install"
 mv -f "$tmp_install" "$INSTALL_DIR/wml-update"
+doc_dir="${DOC_DIR:-$(dirname "$INSTALL_DIR")/share/doc/wml-update}"
+mkdir -p "$doc_dir"
+for f in LICENSE NOTICE; do
+  if [ -f "$TMP/$f" ]; then
+    cp "$TMP/$f" "$doc_dir/$f"
+  fi
+done
 echo "Installed $INSTALL_DIR/wml-update ($VERSION)"
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;

@@ -1,4 +1,12 @@
+<p align="center">
+  <img src="assets/logo.png" width="120" alt="WML Update">
+</p>
+
 # WML Update
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
+</p>
 
 一个面向 **Windows、macOS、Linux** 的小型、安全、语言无关的通用更新器。
 
@@ -205,4 +213,5 @@ make build
 
 ## 许可证
 
-MIT，见 [LICENSE](LICENSE)。
+采用 [Apache License 2.0](LICENSE) 授权，署名信息见 [NOTICE](NOTICE)。
+WML Update 名称与 logo 为项目标识；Apache-2.0 不授予商标权，也不允许暗示官方背书。

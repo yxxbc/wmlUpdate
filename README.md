@@ -1,4 +1,12 @@
+<p align="center">
+  <img src="assets/logo.png" width="120" alt="WML Update">
+</p>
+
 # WML Update
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
+</p>
 
 A small, secure, language-agnostic updater for **Windows, macOS and Linux**.
 
@@ -238,4 +246,6 @@ GOOS=linux   GOARCH=amd64 go build ./cmd/wml-update
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE)
+for attribution. The WML Update name and logo are project marks; the Apache-2.0
+license does not grant trademark rights or permission to imply endorsement.

@@ -43,6 +43,12 @@ try {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
     $Dest = Join-Path $InstallDir "wml-update.exe"
     Copy-Item $Binary $Dest -Force
+    $LicenseDir = Join-Path $InstallDir "licenses"
+    New-Item -ItemType Directory -Force -Path $LicenseDir | Out-Null
+    foreach ($file in @("LICENSE", "NOTICE")) {
+        $src = Join-Path $Temp $file
+        if (Test-Path $src) { Copy-Item $src (Join-Path $LicenseDir $file) -Force }
+    }
     Write-Host "Installed $Dest ($Version)"
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if (($userPath -split ';') -notcontains $InstallDir) {
