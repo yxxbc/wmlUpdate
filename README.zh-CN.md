@@ -79,6 +79,10 @@ CLI 可从 Release 下载，或从源码安装：
 go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest
 ```
 
+Release 的 `checksums.txt` 使用项目 Ed25519 密钥签名，可用
+`signing/release-signing-key.pub.pem` 验证；详见
+[signing/README.md](signing/README.md)。
+
 ## 配置
 
 库支持完整 `updater.json`，也支持纯 Go 的 `wmlupdate.Config`。最小 GitHub 配置：

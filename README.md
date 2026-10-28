@@ -90,6 +90,10 @@ For the CLI, download a verified release archive or build it from source:
 go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest
 ```
 
+Release checksums are signed with the project's Ed25519 key. Verify them with
+`signing/release-signing-key.pub.pem`; see
+[signing/README.md](signing/README.md).
+
 ## Configuration
 
 The library accepts either a complete `updater.json` or a programmatic

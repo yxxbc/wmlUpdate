@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-28
 
 ### Added
 
@@ -25,4 +25,4 @@ All notable changes to this project are documented here. The format follows
 - Diagnostics (`doctor`, `status`), examples and production documentation.
 - Apache-2.0 licensing, project branding and a release CLI.
 
-[Unreleased]: https://github.com/yxxbc/wmlUpdate/compare/main...HEAD
+[0.1.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v0.1.0

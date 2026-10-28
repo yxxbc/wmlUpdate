@@ -19,6 +19,7 @@ __pycache__/
 # Signing material must never be committed
 *.pem
 *.key
+!signing/*.pub.pem
 !examples/**/README*
 keys/
 
