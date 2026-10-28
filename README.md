@@ -294,6 +294,11 @@ target directory as a unit: files not present in the new release and not matched
 by `install.preserve` are removed. Point it at an application-managed directory,
 not a user home directory.
 
+## Support
+
+If WML Update saves you time, you can support development on
+[Afdian](https://afdian.com/a/xynrin).
+
 ## Community
 
 - [LINUX DO](https://linux.do)

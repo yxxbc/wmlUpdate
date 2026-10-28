@@ -266,6 +266,11 @@ wml-update --config updater.json serve --json
 请阅读 [安全模型](docs/security.md)。目录安装会管理整个目标目录：新版本中不存在、
 且未被 `install.preserve` 匹配的文件会被删除。请指向应用自管目录，不要指向用户主目录。
 
+## 支持项目
+
+如果 WML Update 为你节省了时间，可以在
+[爱发电](https://afdian.com/a/xynrin) 支持项目持续维护。
+
 ## 社区
 
 - [LINUX DO](https://linux.do)
