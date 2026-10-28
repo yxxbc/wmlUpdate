@@ -472,6 +472,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#one-ordering-version-several-metadata-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One ordering version, several metadata axes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compatibility-promise-from-v100" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1033,6 +1044,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#one-ordering-version-several-metadata-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One ordering version, several metadata axes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compatibility-promise-from-v100" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1112,6 +1134,61 @@
 <li><code>main</code> may contain changes that are not in the latest release. The documentation
   site publishes <code>dev</code> separately from released versions.</li>
 </ul>
+<h2 id="one-ordering-version-several-metadata-axes">One ordering version, several metadata axes<a class="headerlink" href="#one-ordering-version-several-metadata-axes" title="Permanent link">&para;</a></h2>
+<p>A single SemVer is still the right <strong>identity and ordering key</strong> for the Go
+module, the CLI and the update protocol. It is not the only metadata a frequent
+release process needs.</p>
+<p>Use orthogonal axes:</p>
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Example</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SemVer release</td>
+<td><code>1.0.3</code>, <code>1.1.0-beta.2</code></td>
+<td>update identity and ordering</td>
+</tr>
+<tr>
+<td>channel</td>
+<td><code>stable</code>, <code>beta</code>, <code>nightly</code></td>
+<td>who receives the build</td>
+</tr>
+<tr>
+<td>build/commit</td>
+<td><code>20261028.3</code>, git SHA</td>
+<td>display, support and provenance</td>
+</tr>
+<tr>
+<td>published time</td>
+<td>RFC 3339</td>
+<td>feed ordering and release notes</td>
+</tr>
+</tbody>
+</table>
+<p>Rules for frequent builds:</p>
+<ul>
+<li>Every build that clients can install gets a <strong>unique SemVer</strong>. Prefer a
+  monotonic patch counter (<code>v1.0.1341</code>) for stable builds or a pre-release
+  (<code>v1.1.0-nightly.20261028.3</code>) for nightly builds.</li>
+<li>Never reuse a version for different bytes.</li>
+<li>Never use <code>+build</code> metadata as the only difference: SemVer ordering ignores it,
+  so the updater would treat the builds as equal.</li>
+<li>Publish stable, beta and nightly through separate manifest URLs/channels. A
+  nightly tag must not be promoted to stable clients by accident.</li>
+<li>Keep one tag for the Go module and CLI release of the same commit. If the CLI
+  and SDK ever need independent release cadences, split the CLI into its own Go
+  module and tag path rather than inventing two versions for one module.</li>
+<li>Versioned documentation follows tags with <code>mike</code>; <code>dev</code> is not a release.</li>
+</ul>
+<p>This is why a single number is not insufficient by itself: it remains the
+ordering key. The missing pieces for frequent updates are unique version bumps,
+channels and provenance/build metadata, not a second competing version number.</p>
+<p>See <a href="../frequent-releases/">frequent releases</a> for the feed/staging model.</p>
 <h2 id="compatibility-promise-from-v100">Compatibility promise from v1.0.0<a class="headerlink" href="#compatibility-promise-from-v100" title="Permanent link">&para;</a></h2>
 <p>The stable public surface is:</p>
 <ul>
