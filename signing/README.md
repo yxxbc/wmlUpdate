@@ -56,9 +56,29 @@ A working local backup is stored outside the repository at:
 ~/.config/wml-update/release-signing-key.pem
 ```
 
-Permissions are `0600`. **Move that file into a password manager or encrypted
-offline backup, then delete the local working copy.** GitHub secrets are
-write-only: if the private key is lost, it cannot be recovered from GitHub.
+Permissions are `0600`. The key is also stored in the macOS login Keychain as a
+generic password:
+
+```text
+service: wml-update-release-signing-key
+account: yxxbc
+```
+
+Retrieve it with (macOS prints generic-password data as hex when it contains
+line breaks):
+
+```bash
+security find-generic-password \
+  -s wml-update-release-signing-key -w | xxd -r -p \
+  > release-signing-key.pem
+chmod 600 release-signing-key.pem
+```
+
+The login Keychain item is local to this Mac unless iCloud Keychain is enabled
+and the item is added through Apple Passwords/Keychain Access. **Move a copy into
+Apple Passwords (secure note/password) or another password manager and keep an
+encrypted offline backup.** GitHub secrets are write-only: if the private key is
+lost, it cannot be recovered from GitHub.
 
 ## Rotation
 

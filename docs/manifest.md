@@ -16,7 +16,7 @@ The updater fetches `manifest.json`, verifies the detached signature when a
 public key is configured, validates the manifest, selects the asset for the
 running platform, and uses the manifest's SHA-256 to verify the download.
 
-JSON Schema: [`schema/manifest.schema.json`](../schema/manifest.schema.json).
+JSON Schema: [`schema/manifest.schema.json`](https://github.com/yxxbc/wmlUpdate/blob/main/schema/manifest.schema.json).
 
 ## Example
 

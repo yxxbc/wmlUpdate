@@ -51,5 +51,10 @@ dist: cross-windows cross-darwin cross-linux
 snapshot:
 	goreleaser release --snapshot --clean
 
+docs:
+	@echo "Install docs dependencies: pip install -r requirements-docs.txt"
+	@echo "Preview: mkdocs serve"
+	@echo "Build:   mkdocs build --strict"
+
 clean:
-	rm -rf bin dist
+	rm -rf bin dist site

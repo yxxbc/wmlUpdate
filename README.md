@@ -275,6 +275,8 @@ not a user home directory.
 
 ## Documentation
 
+**Online documentation: <https://yxxbc.github.io/wmlUpdate/>**
+
 - [Go SDK](docs/sdk.md)
 - [Architecture](docs/architecture.md)
 - [Configuration reference](docs/configuration.md)

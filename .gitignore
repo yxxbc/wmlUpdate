@@ -1,6 +1,7 @@
 # Build output
 /dist/
 /bin/
+/site/
 /wml-update
 /wml-update.exe
 /go

@@ -5,7 +5,7 @@ it, it has no parser ambiguity, and unknown fields are rejected so typos fail
 loudly.
 
 A JSON Schema is published at
-[`schema/config.schema.json`](../schema/config.schema.json). Editors that support
+[`schema/config.schema.json`](https://github.com/yxxbc/wmlUpdate/blob/main/schema/config.schema.json). Editors that support
 `$schema` will autocomplete the file.
 
 Go applications can either point the SDK at this file (`Options.ConfigPath`) or

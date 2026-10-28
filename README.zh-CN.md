@@ -251,6 +251,8 @@ wml-update --config updater.json serve --json
 
 ## 文档
 
+**Online documentation: <https://yxxbc.github.io/wmlUpdate/>**
+
 - [Go SDK](docs/sdk.md)
 - [架构](docs/architecture.md)
 - [配置参考](docs/configuration.md)

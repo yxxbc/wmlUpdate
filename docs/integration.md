@@ -178,11 +178,11 @@ the next update recovers any pending journal.
 
 ### Language examples
 
-- [Python](../examples/python/update.py)
-- [Node.js](../examples/node/update.js)
-- [Go sidecar](../examples/go-cli/main.go)
-- [C#](../examples/csharp/Update.cs)
-- [Shell](../examples/shell/update.sh)
+- [Python](https://github.com/yxxbc/wmlUpdate/blob/main/examples/python/update.py)
+- [Node.js](https://github.com/yxxbc/wmlUpdate/blob/main/examples/node/update.js)
+- [Go sidecar](https://github.com/yxxbc/wmlUpdate/blob/main/examples/go-cli/main.go)
+- [C#](https://github.com/yxxbc/wmlUpdate/blob/main/examples/csharp/Update.cs)
+- [Shell](https://github.com/yxxbc/wmlUpdate/blob/main/examples/shell/update.sh)
 
 All examples follow the same rules: argv array, line-delimited JSON, wait for a
 terminal event, check the exit code.
