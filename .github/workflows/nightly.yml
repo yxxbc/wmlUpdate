@@ -1,0 +1,90 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      base_version:
+        description: "Optional stable base version, e.g. v1.2.0"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: Build nightly prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./... -count=1
+
+      - name: Choose nightly version
+        env:
+          BASE_VERSION: ${{ inputs.base_version }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          base="${BASE_VERSION:-}"
+          if [ -n "$base" ]; then
+            if ! [[ "$base" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "base_version must look like v1.2.0" >&2
+              exit 1
+            fi
+          else
+            latest="$(git tag -l --merged HEAD 'v[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
+            if [ -z "$latest" ]; then
+              base="v0.1.0"
+            else
+              IFS=. read -r major minor _ <<< "${latest#v}"
+              base="v${major}.$((minor + 1)).0"
+            fi
+          fi
+          version="${base}-nightly.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          if git rev-parse -q --verify "refs/tags/${version}" >/dev/null; then
+            echo "tag ${version} already exists" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$version" -m "Nightly build $version"
+          git push origin "$version"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "Nightly version: $version"
+
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign checksums
+        if: ${{ vars.WML_SIGNING_ENABLED == 'true' }}
+        env:
+          WML_SIGNING_KEY: ${{ secrets.WML_SIGNING_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$WML_SIGNING_KEY"
+          umask 077
+          printf '%s' "$WML_SIGNING_KEY" > "$RUNNER_TEMP/signing-key.pem"
+          go run ./cmd/wml-update sign --key "$RUNNER_TEMP/signing-key.pem" dist/checksums.txt
+          gh release upload "$VERSION" dist/checksums.txt.sig --clobber
+          rm -f "$RUNNER_TEMP/signing-key.pem"

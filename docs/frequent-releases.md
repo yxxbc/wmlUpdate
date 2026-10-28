@@ -8,6 +8,26 @@ static metadata with hashes and optional signatures.
 This model follows the approach used by fast-moving desktop apps: a dedicated
 feed, immutable version numbers, background staging, and a deliberate restart.
 
+## This project's own nightly channel
+
+The repository includes `.github/workflows/nightly.yml`. On its daily schedule
+(or a manual `workflow_dispatch`) it:
+
+1. runs the test suite;
+2. derives the next minor from the newest reachable stable tag, e.g. `v1.0.0`
+   becomes base `v1.1.0`;
+3. tags the current `main` as
+   `v1.1.0-nightly.YYYYMMDD.<run-number>.<attempt>`;
+4. builds and publishes a GitHub prerelease with the normal archives, packages,
+   checksums and (when configured) `checksums.txt.sig`.
+
+Nightly tags are valid SemVer prereleases. Stable clients ignore them; a nightly
+client opts in explicitly. The docs workflow does not publish a docs version for
+nightly tags; `latest` remains the newest stable release.
+
+The workflow does not create a new stable release or move `latest`. Stable
+releases stay deliberate, annotated tags.
+
 ## Publish a dedicated feed, not a GitHub API call per check
 
 Use a static manifest (or a small dynamic endpoint serving the same shape) for

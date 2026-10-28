@@ -10,6 +10,9 @@ WML Update follows [Semantic Versioning 2.0.0](https://semver.org/).
   reproducibility and must not be retagged or moved.
 - `main` may contain changes that are not in the latest release. The documentation
   site publishes `dev` separately from released versions.
+- The nightly workflow publishes prerelease builds such as
+  `v1.1.0-nightly.20261028.42.1`. They are valid Go module tags but are never
+  `latest` and are not selected by a stable client.
 
 ## One ordering version, several metadata axes
 
@@ -81,8 +84,10 @@ cached it. If a release must be withdrawn, publish a new version and use the
 Go `retract` directive if appropriate; never rewrite history behind an existing
 tag.
 
-Pre-releases use SemVer identifiers, for example `v1.1.0-rc.1`. They are not
-selected by default and should be treated as unstable.
+Pre-releases use SemVer identifiers, for example `v1.1.0-rc.1` or
+`v1.1.0-nightly.20261028.42.1`. They are not selected by default and should be
+treated as unstable. Nightly tags are immutable too; do not reuse a nightly
+version or delete it to "clean up" after clients may have cached it.
 
 ## Documentation versions
 

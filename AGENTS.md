@@ -167,7 +167,9 @@ Docs are built with MkDocs Material and published to GitHub Pages with `mike`:
 - release tag versions from tags
 - `latest` alias for the newest stable release
 
-Release is a deliberate operation, not part of every change:
+Release is a deliberate operation, not part of every change. Stable tags are
+manual. The `Nightly` workflow creates prerelease tags from `main` and never
+moves `latest`; docs are not versioned for nightly tags.
 
 1. Run the full test matrix above.
 2. Verify a real consumer can `go get` the release candidate.
