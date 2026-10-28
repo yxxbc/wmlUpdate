@@ -1,6 +1,7 @@
 # ADR 0002: Expose subprocess NDJSON first, loopback HTTP second
 
-- Status: accepted
+- Status: superseded by ADR 0005 for the primary integration surface; the
+  NDJSON/HTTP adapters remain supported
 - Date: 2026-10-28
 
 ## Context

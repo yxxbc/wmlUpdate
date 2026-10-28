@@ -223,7 +223,7 @@ The same shapes are returned by the HTTP job API. See
 ## Decisions
 
 - [ADR 0001: Go static binary](adr/0001-go-static-binary.md)
-- [ADR 0002: subprocess NDJSON plus local HTTP](adr/0002-subprocess-json-and-http.md)
+- [ADR 0002: subprocess NDJSON plus local HTTP (superseded as primary by 0005)](adr/0002-subprocess-json-and-http.md)
 - [ADR 0003: transactional replace with backups](adr/0003-transactional-install.md)
 - [ADR 0004: supply-chain verification](adr/0004-supply-chain-verification.md)
 - [ADR 0005: SDK-first public API](adr/0005-sdk-first-public-api.md)
