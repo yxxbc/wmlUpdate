@@ -148,7 +148,7 @@ realistic check:
 ```bash
 mkdir sdk-consumer && cd sdk-consumer
 go mod init example.com/sdk-consumer
-go get github.com/yxxbc/wmlUpdate@v0.1.0
+go get github.com/yxxbc/wmlUpdate@v1.0.0
 ```
 
 ```go

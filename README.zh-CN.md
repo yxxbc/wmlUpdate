@@ -258,6 +258,7 @@ wml-update --config updater.json serve --json
 - [Go SDK](docs/sdk.md)
 - [架构](docs/architecture.md)
 - [配置参考](docs/configuration.md)
+- [版本与兼容性](docs/versioning.md)
 - [清单格式](docs/manifest.md)
 - [集成与 sidecar 协议](docs/integration.md)
 - [自托管更新](docs/self-hosting.md)

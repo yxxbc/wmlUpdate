@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: wml-update version and platform
-      placeholder: "wml-update 0.1.0, Windows 11 amd64"
+      placeholder: "wml-update 1.0.0, Windows 11 amd64"
     validations:
       required: true
   - type: dropdown

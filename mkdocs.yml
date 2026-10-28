@@ -74,6 +74,7 @@ nav:
   - Integration: integration.md
   - Testing: testing.md
   - Configuration: configuration.md
+  - Versioning: versioning.md
   - Manifests: manifest.md
   - GitHub Releases: github-releases.md
   - Self-hosting: self-hosting.md
@@ -91,6 +92,9 @@ nav:
       - 0006 Source chains: adr/0006-source-chains.md
 
 extra:
+  version:
+    provider: mike
+    default: latest
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/yxxbc/wmlUpdate

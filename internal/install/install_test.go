@@ -195,3 +195,49 @@ func TestMacOSQuarantineRemoval(t *testing.T) {
 		t.Fatal("quarantine xattr still present")
 	}
 }
+
+func TestMacOSAppBundleUpdateSigns(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS-only codesign test")
+	}
+	root := t.TempDir()
+	target := filepath.Join(root, "MyApp.app")
+	if err := os.MkdirAll(filepath.Join(target, "Contents", "MacOS"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "Contents", "Info.plist"), []byte("<plist><dict><key>CFBundleExecutable</key><string>Test</string></dict></plist>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	echo, err := os.ReadFile("/bin/echo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "Contents", "MacOS", "Test"), echo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	artifact := newArchive(t, map[string]string{
+		"Contents/Info.plist": "<plist><dict><key>CFBundleExecutable</key><string>Test</string></dict></plist>",
+		"Contents/MacOS/Test": string(echo),
+	})
+	cfg := loadConfig(t, target, `, "macos": {"remove_quarantine": true, "ad_hoc_sign": true}`)
+	store, err := state.Open(cfg.StateDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Load(cfg.AppID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mgr := &Manager{Store: store, Data: st, KeepBackups: 1, Sink: event.NopSink{}}
+	plan, err := Prepare(cfg, platform.Current(), release.Asset{Name: "app.zip", Format: "zip"}, artifact, "2.0.0", "1.0.0", event.NopSink{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Apply(context.Background(), plan); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("/usr/bin/codesign", "--verify", "--deep", "--strict", target).CombinedOutput(); err != nil {
+		t.Fatalf("codesign verify: %v\n%s", err, out)
+	}
+}

@@ -3,7 +3,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/yxxbc/wmlUpdate/main/scripts/install.sh | sh
-#   VERSION=v0.1.0 INSTALL_DIR="$HOME/bin" sh install.sh
+#   VERSION=v1.0.0 INSTALL_DIR="$HOME/bin" sh install.sh
 #
 # Verified against the release checksums.txt. Ed25519 verification requires the
 # release public key and is deliberately left to the release documentation.

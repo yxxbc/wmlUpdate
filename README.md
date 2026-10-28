@@ -284,6 +284,7 @@ not a user home directory.
 - [Go SDK](docs/sdk.md)
 - [Architecture](docs/architecture.md)
 - [Configuration reference](docs/configuration.md)
+- [Versioning and compatibility](docs/versioning.md)
 - [Manifest format](docs/manifest.md)
 - [Integration and sidecar protocol](docs/integration.md)
 - [Self-hosting updates](docs/self-hosting.md)

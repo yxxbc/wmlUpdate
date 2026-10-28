@@ -2,7 +2,7 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File install.ps1
-#   $env:VERSION="v0.1.0"; $env:INSTALL_DIR="$env:LOCALAPPDATA\Programs\wml-update"; .\install.ps1
+#   $env:VERSION="v1.0.0"; $env:INSTALL_DIR="$env:LOCALAPPDATA\Programs\wml-update"; .\install.ps1
 $ErrorActionPreference = "Stop"
 
 $Repo = "yxxbc/wmlUpdate"
