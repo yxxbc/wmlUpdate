@@ -71,6 +71,7 @@ extra_css:
 nav:
   - Home: index.md
   - Go SDK: sdk.md
+  - API reference: https://pkg.go.dev/github.com/yxxbc/wmlUpdate
   - Integration: integration.md
   - Testing: testing.md
   - Configuration: configuration.md

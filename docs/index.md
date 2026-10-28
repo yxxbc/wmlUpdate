@@ -8,8 +8,9 @@ for any language. Embed it, call `Check`, then `Apply`. Your application keeps
 its UI, lifecycle and restart behavior.
 </div>
 
-[Get started with the Go SDK :material-arrow-right:](sdk.md){ .md-button .md-button--primary }
+[Get started with the Go SDK :material-arrow-right:](sdk.md){ .md-button .md-button--primary target="_self" }
 [View on GitHub :fontawesome-brands-github:](https://github.com/yxxbc/wmlUpdate){ .md-button }
+[Go API reference :material-file-document-outline:](https://pkg.go.dev/github.com/yxxbc/wmlUpdate){ .md-button }
 
 ```go
 u, err := wmlupdate.New(wmlupdate.Options{

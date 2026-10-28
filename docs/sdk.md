@@ -1,5 +1,7 @@
 # Go SDK
 
+[API reference on pkg.go.dev](https://pkg.go.dev/github.com/yxxbc/wmlUpdate){ .md-button }
+
 The Go package is the primary integration surface. It is a library, not a
 framework: no daemon, no required directory layout, no lifecycle hooks and no
 global state. Your application owns startup, UI, process exit and restart.

@@ -7,6 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <a href="https://yxxbc.github.io/wmlUpdate/"><img src="https://img.shields.io/badge/docs-online-0891b2.svg" alt="Docs"></a>
+  <a href="https://pkg.go.dev/github.com/yxxbc/wmlUpdate"><img src="https://pkg.go.dev/badge/github.com/yxxbc/wmlUpdate.svg" alt="Go Reference"></a>
 </p>
 
 面向 Go 应用的轻量更新**库**，附带发版 CLI，以及供其他语言使用的可选 sidecar。
@@ -255,7 +256,8 @@ wml-update --config updater.json serve --json
 
 **Online documentation: <https://yxxbc.github.io/wmlUpdate/>**
 
-- [Go SDK](docs/sdk.md)
+- [Go SDK 指南](https://yxxbc.github.io/wmlUpdate/latest/sdk/)
+- [Go API 参考](https://pkg.go.dev/github.com/yxxbc/wmlUpdate)
 - [架构](docs/architecture.md)
 - [配置参考](docs/configuration.md)
 - [版本与兼容性](docs/versioning.md)

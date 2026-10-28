@@ -7,6 +7,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <a href="https://yxxbc.github.io/wmlUpdate/"><img src="https://img.shields.io/badge/docs-online-0891b2.svg" alt="Docs"></a>
+  <a href="https://pkg.go.dev/github.com/yxxbc/wmlUpdate"><img src="https://pkg.go.dev/badge/github.com/yxxbc/wmlUpdate.svg" alt="Go Reference"></a>
 </p>
 
 A lightweight update **library** for Go applications, with a release CLI and an
@@ -281,7 +282,8 @@ not a user home directory.
 
 **Online documentation: <https://yxxbc.github.io/wmlUpdate/>**
 
-- [Go SDK](docs/sdk.md)
+- [Go SDK guide](https://yxxbc.github.io/wmlUpdate/latest/sdk/)
+- [Go API reference](https://pkg.go.dev/github.com/yxxbc/wmlUpdate)
 - [Architecture](docs/architecture.md)
 - [Configuration reference](docs/configuration.md)
 - [Versioning and compatibility](docs/versioning.md)
