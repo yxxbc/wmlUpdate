@@ -66,6 +66,19 @@ result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{})
 - **Windows 延迟应用**：应用仍在运行时也可替换；可选 macOS 签名连续性、隔离清理与 ad-hoc 签名。
 - **发版工具**：归档、哈希、签名、清单和校验文件生成。
 
+## 平台范围
+
+官方 Release 二进制面向 **Windows、macOS、Linux** 的 `amd64` / `arm64`：
+
+| 后缀 | 含义 |
+| --- | --- |
+| `.tar.gz`、`.zip` | CLI 二进制归档 |
+| `.deb`、`.rpm` | Linux 发行版安装包 |
+| `.apk` | **Alpine Linux** 包，不是 Android APK |
+
+不支持 iOS、iPadOS、Android、鸿蒙应用安装。这个 SDK 面向 Go 桌面端/服务端应用，
+不处理移动商店或移动端安装模型。
+
 ## 安装
 
 ```bash
@@ -251,6 +264,10 @@ wml-update --config updater.json serve --json
 
 请阅读 [安全模型](docs/security.md)。目录安装会管理整个目标目录：新版本中不存在、
 且未被 `install.preserve` 匹配的文件会被删除。请指向应用自管目录，不要指向用户主目录。
+
+## 社区
+
+- [LINUX DO](https://linux.do)
 
 ## 文档
 

@@ -79,6 +79,21 @@ The same engine is exposed as:
   optional macOS signer continuity, quarantine removal and ad-hoc signing.
 - **Release tooling**: archive, hash, sign, manifest and checksum generation.
 
+## Platform scope
+
+Official release binaries target **Windows, macOS and Linux** on `amd64` and
+`arm64`:
+
+| Suffix | Meaning |
+| --- | --- |
+| `.tar.gz`, `.zip` | Archive for the CLI binary |
+| `.deb`, `.rpm` | Linux distribution packages |
+| `.apk` | **Alpine Linux** package (not Android) |
+
+There is no iOS, iPadOS, Android or HarmonyOS application installer. The SDK is
+a Go desktop/server library; mobile app stores and mobile installation models are
+out of scope.
+
 ## Install
 
 ```bash
@@ -277,6 +292,10 @@ Read the [security model](docs/security.md). The directory strategy manages the
 target directory as a unit: files not present in the new release and not matched
 by `install.preserve` are removed. Point it at an application-managed directory,
 not a user home directory.
+
+## Community
+
+- [LINUX DO](https://linux.do)
 
 ## Documentation
 
