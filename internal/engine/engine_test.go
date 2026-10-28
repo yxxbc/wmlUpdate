@@ -183,6 +183,14 @@ func TestEngineCheckFetchUpdateRollback(t *testing.T) {
 	if after.Status != StatusUpToDate {
 		t.Fatalf("after update = %+v", after)
 	}
+	// State must outrank a stale config current_version.
+	after, err = eng.Check(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Status != StatusUpToDate || after.CurrentVersion != "2.0.0" {
+		t.Fatalf("state-precedence check = %+v", after)
+	}
 
 	rb, err := eng.Rollback(ctx)
 	if err != nil {

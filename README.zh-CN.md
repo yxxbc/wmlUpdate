@@ -111,6 +111,7 @@ wml-update publish --spec publish.json --out public/stable --key keys/signing-ke
 {
   "app_id": "com.example.myapp",
   "channel": "stable",
+  "current_version": "1.0.0",
   "source": {
     "type": "static",
     "manifest_url": "https://updates.example.com/stable/manifest.json"

@@ -316,14 +316,18 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		events := job.events.Events()
-		for last < len(events) {
-			data, err := json.Marshal(events[last])
+		events, base := job.events.Snapshot()
+		for i, ev := range events {
+			id := base + i + 1
+			if id <= last {
+				continue
+			}
+			data, err := json.Marshal(ev)
 			if err != nil {
 				continue
 			}
-			fmt.Fprintf(w, "id: %d\ndata: %s\n\n", last+1, data)
-			last++
+			fmt.Fprintf(w, "id: %d\ndata: %s\n\n", id, data)
+			last = id
 		}
 		flusher.Flush()
 		if job.done() {

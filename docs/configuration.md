@@ -62,12 +62,14 @@ Commands that do not operate on an installation (`version`, `keygen`, `sign`,
 The version used for comparison comes from:
 
 1. `--current-version` on `check`, `update`, `fetch` and `doctor`
-2. `current_version` in the configuration
-3. `installed_version` recorded in updater state
+2. `installed_version` recorded in updater state
+3. `current_version` in the configuration
 
 If none is available, the command fails. Production applications should pass
-their compiled version on every invocation; the state file is a fallback, not a
-source of truth after a manual installation.
+their compiled version on every invocation. State is preferred over the static
+config value so that repeated checks after an updater-driven installation do not
+keep comparing against a stale declared version; after a manual installation use
+`mark` or the flag. Config is the initial fallback.
 
 Versions are strict [SemVer 2.0.0](https://semver.org/). A leading `v` is
 accepted and removed. Build metadata is ignored for ordering.

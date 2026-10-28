@@ -272,18 +272,23 @@ func sleepBackoff(ctx context.Context, attempt int, retryAfter time.Duration) er
 }
 
 func parseRetryAfter(v string) time.Duration {
+	const cap = 60 * time.Second
+	var d time.Duration
 	if v == "" {
 		return 0
 	}
 	if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs >= 0 {
-		return time.Duration(secs) * time.Second
+		d = time.Duration(secs) * time.Second
+	} else if t, err := http.ParseTime(v); err == nil {
+		d = time.Until(t)
 	}
-	if t, err := http.ParseTime(v); err == nil {
-		if d := time.Until(t); d > 0 {
-			return d
-		}
+	if d > cap {
+		d = cap
 	}
-	return 0
+	if d < 0 {
+		return 0
+	}
+	return d
 }
 
 // DownloadOptions configures Download.

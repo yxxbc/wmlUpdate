@@ -128,6 +128,7 @@ Your updater config points at the manifest:
 {
   "app_id": "com.example.myapp",
   "channel": "stable",
+  "current_version": "1.0.0",
   "source": {
     "type": "static",
     "manifest_url": "https://updates.example.com/stable/manifest.json"

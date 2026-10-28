@@ -59,9 +59,10 @@ func (NopSink) Emit(Event) {}
 // Buffer is a concurrency-safe bounded event buffer. It is used by API jobs so
 // progress can be polled without unbounded memory growth.
 type Buffer struct {
-	mu     sync.Mutex
-	events []Event
-	max    int
+	mu      sync.Mutex
+	events  []Event
+	max     int
+	dropped int
 }
 
 func NewBuffer(max int) *Buffer {
@@ -80,6 +81,7 @@ func (b *Buffer) Emit(e Event) {
 	if len(b.events) == b.max {
 		copy(b.events, b.events[1:])
 		b.events[len(b.events)-1] = e
+		b.dropped++
 		return
 	}
 	b.events = append(b.events, e)
@@ -87,11 +89,19 @@ func (b *Buffer) Emit(e Event) {
 
 // Events returns a snapshot of buffered events.
 func (b *Buffer) Events() []Event {
+	events, _ := b.Snapshot()
+	return events
+}
+
+// Snapshot returns buffered events and the number of events dropped before the
+// first one. Event sequence IDs are stable even when the buffer wraps: the
+// event at index i has ID dropped+i+1.
+func (b *Buffer) Snapshot() ([]Event, int) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	out := make([]Event, len(b.events))
 	copy(out, b.events)
-	return out
+	return out, b.dropped
 }
 
 // Multi fans out events in order.

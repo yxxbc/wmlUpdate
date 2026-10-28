@@ -340,6 +340,8 @@ func (a *app) doctorCmd() *cobra.Command {
 						if c.Warning {
 							mark = "warn"
 						}
+					} else if c.Warning {
+						mark = "warn"
 					}
 					line := fmt.Sprintf("[%-4s] %s", mark, c.Name)
 					if c.Detail != "" {

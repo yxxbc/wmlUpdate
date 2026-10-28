@@ -262,6 +262,9 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions) (*Result, error
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, wrap("cancelled", err)
+	}
 	res.ArtifactPath = artifactPath
 	if sha, _, hashErr := checksum.File(artifactPath); hashErr == nil {
 		res.Asset.SHA256 = sha
@@ -278,6 +281,10 @@ func (e *Engine) Update(ctx context.Context, opts UpdateOptions) (*Result, error
 	plan, err := install.Prepare(e.cfg, e.platform, asset, artifactPath, rel.Version.String(), current.String(), e.sink)
 	if err != nil {
 		return nil, wrap("install", err)
+	}
+	if err := ctx.Err(); err != nil {
+		cleanupPlan(plan)
+		return nil, wrap("cancelled", err)
 	}
 	if opts.Defer {
 		pid, err := e.schedule(ctx, plan, opts.WaitPIDs)
@@ -447,6 +454,13 @@ func (e *Engine) MarkInstalled(ctx context.Context, versionString, digest string
 	if digest != "" && !validSHA256(digest) {
 		return nil, fail("config", "sha256 must be 64 hexadecimal characters")
 	}
+	_, mgr, err := e.loadForWrite()
+	if err != nil {
+		return nil, err
+	}
+	if err := e.recover(mgr); err != nil {
+		return nil, err
+	}
 	st, err := e.store.Load(e.cfg.AppID)
 	if err != nil {
 		return nil, wrap("state", err)
@@ -514,7 +528,7 @@ func (e *Engine) recover(mgr *install.Manager) error {
 }
 
 func (e *Engine) resolveCurrent(explicit string, st *state.State) (version.Version, error) {
-	candidates := []string{explicit, e.cfg.CurrentVersion, st.InstalledVersion}
+	candidates := []string{explicit, st.InstalledVersion, e.cfg.CurrentVersion}
 	var raw string
 	for _, c := range candidates {
 		if strings.TrimSpace(c) != "" {
@@ -558,6 +572,10 @@ func (e *Engine) download(ctx context.Context, st *state.State, rel *release.Rel
 			}
 			_ = os.Remove(dest)
 		}
+	} else {
+		// Unverified artifacts are never reused: there is no digest with which
+		// to decide whether an existing file is the intended download.
+		_ = os.Remove(dest)
 	}
 
 	verified := asset.SHA256 != ""
