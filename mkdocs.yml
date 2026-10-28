@@ -78,6 +78,7 @@ nav:
   - Manifests: manifest.md
   - GitHub Releases: github-releases.md
   - Self-hosting: self-hosting.md
+  - Frequent releases: frequent-releases.md
   - Security: security.md
   - Release signing: release-signing.md
   - Troubleshooting: troubleshooting.md

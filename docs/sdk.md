@@ -129,7 +129,7 @@ form. `BaseDir` defaults to the process working directory for relative paths.
 `SourceConfig.Sources` supports ordered chains. `SourceConfig.ManifestURLs`,
 `SourceConfig.AssetMirrors` and `DownloadConfig.Proxy` expose the same failover
 and network options as the JSON configuration. `InstallConfig.MacOS` controls
-optional quarantine removal and ad-hoc signing. See the
+optional quarantine removal, ad-hoc signing and signer-change policy. See the
 [configuration reference](configuration.md) for semantics and security
 trade-offs.
 

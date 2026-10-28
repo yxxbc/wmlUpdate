@@ -62,7 +62,7 @@ result, err := u.Apply(ctx, update, wmlupdate.ApplyOptions{})
 - **目录/单文件事务化安装**，保留备份、崩溃恢复和回滚数据。
 - **安全解压**：路径穿越、符号链接逃逸、硬链接、特殊文件、条目/膨胀限制。
 - **断点续传**、有界重试与显式代理配置。
-- **Windows 延迟应用**：应用仍在运行时也可替换；可选 macOS 隔离清理与 ad-hoc 签名。
+- **Windows 延迟应用**：应用仍在运行时也可替换；可选 macOS 签名连续性、隔离清理与 ad-hoc 签名。
 - **发版工具**：归档、哈希、签名、清单和校验文件生成。
 
 ## 安装
@@ -262,6 +262,7 @@ wml-update --config updater.json serve --json
 - [清单格式](docs/manifest.md)
 - [集成与 sidecar 协议](docs/integration.md)
 - [自托管更新](docs/self-hosting.md)
+- [频繁发版指南](docs/frequent-releases.md)
 - [GitHub Releases](docs/github-releases.md)
 - [安全模型](docs/security.md)
 - [测试指南](docs/testing.md)

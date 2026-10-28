@@ -70,6 +70,32 @@ func (m *Manager) warn(format string, args ...any) {
 	}
 }
 
+// renameRetry waits out Windows AV/indexer sharing violations. Elsewhere it is
+// an ordinary rename.
+func renameRetry(ctx context.Context, from, to string) error {
+	delay := 100 * time.Millisecond
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		err := os.Rename(from, to)
+		if err == nil || !retryableRenameError(err) {
+			return err
+		}
+		if time.Now().Add(delay).After(deadline) {
+			return err
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return err
+		case <-timer.C:
+		}
+		if delay < time.Second {
+			delay *= 2
+		}
+	}
+}
+
 // Prepare stages an artifact for installation. It performs extraction, prefix
 // stripping and preservation before any live files are touched.
 func Prepare(cfg *config.Config, p platform.Platform, artifact release.Asset, artifactPath, versionString, currentVersion string, sink event.Sink) (*Plan, error) {
@@ -498,18 +524,23 @@ func (m *Manager) applyReplace(ctx context.Context, plan *Plan) error {
 		if _, err := os.Lstat(plan.Backup); err == nil {
 			return fmt.Errorf("backup path already exists: %s", plan.Backup)
 		}
-		if err := os.Rename(plan.Target, plan.Backup); err != nil {
+		if plan.Strategy == "directory" {
+			if err := verifyMacOSSigner(ctx, plan.Target, plan.Stage, plan.MacOS); err != nil {
+				return err
+			}
+		}
+		if err := renameRetry(ctx, plan.Target, plan.Backup); err != nil {
 			return fmt.Errorf("move existing installation to backup: %w (on Windows, close the application and use --defer)", err)
 		}
 		m.Data.Pending.Phase = "backed_up"
 		if err := m.Store.Save(m.Data); err != nil {
-			_ = os.Rename(plan.Backup, plan.Target)
+			_ = renameRetry(context.Background(), plan.Backup, plan.Target)
 			return fmt.Errorf("write install journal: %w", err)
 		}
 	}
-	if err := os.Rename(plan.Stage, plan.Target); err != nil {
+	if err := renameRetry(ctx, plan.Stage, plan.Target); err != nil {
 		if targetExists {
-			_ = os.Rename(plan.Backup, plan.Target)
+			_ = renameRetry(context.Background(), plan.Backup, plan.Target)
 		}
 		return fmt.Errorf("activate staged installation: %w", err)
 	}
@@ -517,7 +548,7 @@ func (m *Manager) applyReplace(ctx context.Context, plan *Plan) error {
 		if err := m.applyMacOSPostInstall(ctx, plan); err != nil {
 			_ = os.RemoveAll(plan.Target)
 			if targetExists {
-				_ = os.Rename(plan.Backup, plan.Target)
+				_ = renameRetry(context.Background(), plan.Backup, plan.Target)
 			}
 			return err
 		}
@@ -640,7 +671,7 @@ func (m *Manager) restorePending() {
 			if _, err := os.Lstat(p.Target); err == nil {
 				_ = os.RemoveAll(p.Target)
 			}
-			_ = os.Rename(p.Backup, p.Target)
+			_ = renameRetry(context.Background(), p.Backup, p.Target)
 		}
 	}
 	if p.Stage != "" {
@@ -659,17 +690,23 @@ func (m *Manager) launch(plan *Plan) {
 	for i, a := range plan.RelaunchArgs {
 		args[i] = expandPlaceholders(a, plan)
 	}
-	cmd := exec.Command(path, args...)
-	if plan.Target != "" {
-		cmd.Dir = plan.Target
+	delays := []time.Duration{250 * time.Millisecond, 500 * time.Millisecond, time.Second, 2 * time.Second}
+	for attempt := 0; attempt <= len(delays); attempt++ {
+		cmd := exec.Command(path, args...)
+		if plan.Target != "" {
+			cmd.Dir = plan.Target
+		}
+		cmd.Stdout, cmd.Stderr, cmd.Stdin = nil, nil, nil
+		detach(cmd)
+		if err := cmd.Start(); err == nil {
+			_ = cmd.Process.Release()
+			return
+		} else if attempt == len(delays) {
+			m.warn("update installed but relaunch failed after retries: %v", err)
+			return
+		}
+		time.Sleep(delays[attempt])
 	}
-	cmd.Stdout, cmd.Stderr, cmd.Stdin = nil, nil, nil
-	detach(cmd)
-	if err := cmd.Start(); err != nil {
-		m.warn("update installed but relaunch failed: %v", err)
-		return
-	}
-	_ = cmd.Process.Release()
 }
 
 func expandPlaceholders(s string, plan *Plan) string {
@@ -716,6 +753,56 @@ func validatePlan(plan *Plan) error {
 		return fmt.Errorf("unsupported plan strategy %q", plan.Strategy)
 	}
 	return nil
+}
+
+var (
+	macCodeTeam = codeTeam
+	macVerify   = verifyCodeSignature
+)
+
+// verifyMacOSSigner enforces signer continuity when replacing a signed .app.
+// Ad-hoc signing deliberately replaces the signer and is exempt.
+func verifyMacOSSigner(ctx context.Context, installed, staged string, cfg config.MacOSConfig) error {
+	if runtime.GOOS != "darwin" || cfg.AllowSignerChange || cfg.AdHocSign {
+		return nil
+	}
+	if !strings.HasSuffix(strings.ToLower(installed), ".app") {
+		return nil
+	}
+	want := macCodeTeam(ctx, installed)
+	if want == "" {
+		return nil // unsigned or ad-hoc installed app
+	}
+	if err := macVerify(ctx, staged); err != nil {
+		return fmt.Errorf("downloaded app signature is invalid: %w", err)
+	}
+	got := macCodeTeam(ctx, staged)
+	if got != want {
+		return fmt.Errorf("downloaded app is signed by team %q, installed app by %q; set install.macos.allow_signer_change to override", got, want)
+	}
+	return nil
+}
+
+func verifyCodeSignature(ctx context.Context, app string) error {
+	tctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	out, err := exec.CommandContext(tctx, "/usr/bin/codesign", "--verify", "--deep", "--strict", app).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+func codeTeam(ctx context.Context, app string) string {
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(tctx, "/usr/bin/codesign", "-dv", "--verbose=2", app).CombinedOutput()
+	for _, line := range strings.Split(string(out), "\n") {
+		if value, ok := strings.CutPrefix(line, "TeamIdentifier="); ok && value != "not set" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func (m *Manager) applyMacOSPostInstall(ctx context.Context, plan *Plan) error {
@@ -775,13 +862,13 @@ func (m *Manager) Rollback(ctx context.Context) (*state.Backup, error) {
 		return nil, targetErr
 	}
 	if targetExists {
-		if err := os.Rename(b.Target, failed); err != nil {
+		if err := renameRetry(ctx, b.Target, failed); err != nil {
 			return nil, fmt.Errorf("move current installation aside: %w", err)
 		}
 	}
-	if err := os.Rename(b.Path, b.Target); err != nil {
+	if err := renameRetry(ctx, b.Path, b.Target); err != nil {
 		if targetExists {
-			_ = os.Rename(failed, b.Target)
+			_ = renameRetry(ctx, failed, b.Target)
 		}
 		return nil, fmt.Errorf("restore backup: %w", err)
 	}
@@ -836,7 +923,7 @@ func (m *Manager) Recover() ([]string, error) {
 					return nil, fmt.Errorf("recover: remove partial installation: %w", err)
 				}
 			}
-			if err := os.Rename(p.Backup, p.Target); err != nil {
+			if err := renameRetry(context.Background(), p.Backup, p.Target); err != nil {
 				return nil, fmt.Errorf("recover: restore backup: %w", err)
 			}
 			warnings = append(warnings, "restored the previous version after an interrupted installation")

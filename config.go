@@ -104,6 +104,9 @@ type MacOSConfig struct {
 	// unsigned bundles launch, but destroys Developer ID signatures and
 	// notarization; use only for unsigned distributions.
 	AdHocSign bool `json:"ad_hoc_sign,omitempty"`
+	// AllowSignerChange permits a Developer ID team change. By default an
+	// installed signed .app requires the downloaded app to have the same team.
+	AllowSignerChange bool `json:"allow_signer_change,omitempty"`
 }
 
 // SecurityConfig controls signature verification and network boundaries.
@@ -175,8 +178,9 @@ func (c *Config) internal(baseDir string) (*config.Config, error) {
 			RelaunchPath:    c.Install.RelaunchPath,
 			RelaunchArgs:    cloneSlice(c.Install.RelaunchArgs),
 			MacOS: config.MacOSConfig{
-				RemoveQuarantine: c.Install.MacOS.RemoveQuarantine,
-				AdHocSign:        c.Install.MacOS.AdHocSign,
+				RemoveQuarantine:  c.Install.MacOS.RemoveQuarantine,
+				AdHocSign:         c.Install.MacOS.AdHocSign,
+				AllowSignerChange: c.Install.MacOS.AllowSignerChange,
 			},
 		},
 		Security: config.SecurityConfig{

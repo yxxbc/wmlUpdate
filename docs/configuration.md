@@ -338,7 +338,8 @@ Optional directory post-install handling is available:
   "path": "/Applications/MyApp.app",
   "macos": {
     "remove_quarantine": true,
-    "ad_hoc_sign": false
+    "ad_hoc_sign": false,
+    "allow_signer_change": false
   }
 }
 ```
@@ -347,6 +348,7 @@ Optional directory post-install handling is available:
 | --- | --- | --- |
 | `remove_quarantine` | `false` | Run `xattr -dr com.apple.quarantine` on the installed target. This bypasses Gatekeeper's first-launch evaluation |
 | `ad_hoc_sign` | `false` | Run `codesign --force --deep --sign -` on a `.app` target |
+| `allow_signer_change` | `false` | Permit replacing a signed `.app` with a bundle from a different Developer ID team |
 
 Both default off. `remove_quarantine` weakens a macOS security boundary and
 should only be enabled for updates whose source and SHA-256/Ed25519 trust you
@@ -355,6 +357,12 @@ use it only for unsigned app bundles, never for a notarized distribution. A
 quarantine-removal command failure is a warning; ad-hoc signing failure rolls
 back the directory swap. These actions only run when the updater itself is
 running on macOS.
+
+When the installed target is a signed `.app`, the staged app must pass
+`codesign --verify --deep --strict` and have the same `TeamIdentifier` as the
+installed app. Set `allow_signer_change` only for an intentional Developer ID
+migration. Ad-hoc signing bypasses continuity because it deliberately replaces
+the signer.
 
 ### `file`
 

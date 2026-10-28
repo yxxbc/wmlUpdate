@@ -75,7 +75,7 @@ The same engine is exposed as:
 - **Resumable downloads** with bounded retries, explicit proxy support and
   `.part` files.
 - **Deferred apply** for Windows when the application is still running, plus
-  optional macOS quarantine removal and ad-hoc signing.
+  optional macOS signer continuity, quarantine removal and ad-hoc signing.
 - **Release tooling**: archive, hash, sign, manifest and checksum generation.
 
 ## Install
@@ -288,6 +288,7 @@ not a user home directory.
 - [Manifest format](docs/manifest.md)
 - [Integration and sidecar protocol](docs/integration.md)
 - [Self-hosting updates](docs/self-hosting.md)
+- [Frequent releases](docs/frequent-releases.md)
 - [GitHub Releases](docs/github-releases.md)
 - [Security model](docs/security.md)
 - [Testing](docs/testing.md)

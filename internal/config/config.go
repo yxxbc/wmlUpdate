@@ -113,6 +113,10 @@ type MacOSConfig struct {
 	// unsigned bundles launch, but destroys Developer ID signatures and
 	// notarization; use only for unsigned distributions.
 	AdHocSign bool `json:"ad_hoc_sign,omitempty"`
+	// AllowSignerChange permits replacing a Developer ID-signed app with a
+	// bundle signed by a different team. By default, when the installed app has
+	// a TeamIdentifier, the staged app must verify and have the same team.
+	AllowSignerChange bool `json:"allow_signer_change,omitempty"`
 }
 
 // SecurityConfig controls supply-chain verification and network boundaries.

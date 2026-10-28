@@ -241,3 +241,51 @@ func TestMacOSAppBundleUpdateSigns(t *testing.T) {
 		t.Fatalf("codesign verify: %v\n%s", err, out)
 	}
 }
+
+func TestMacOSSignerContinuity(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS-only signer test")
+	}
+	target := filepath.Join(t.TempDir(), "App.app")
+	stage := filepath.Join(t.TempDir(), "stage")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(stage, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldTeam, oldVerify := macCodeTeam, macVerify
+	t.Cleanup(func() { macCodeTeam, macVerify = oldTeam, oldVerify })
+	macVerify = func(context.Context, string) error { return nil }
+
+	macCodeTeam = func(_ context.Context, app string) string {
+		if app == target {
+			return "OLD TEAM"
+		}
+		return "NEW TEAM"
+	}
+	if err := verifyMacOSSigner(context.Background(), target, stage, config.MacOSConfig{}); err == nil {
+		t.Fatal("different signing team was accepted")
+	}
+	if err := verifyMacOSSigner(context.Background(), target, stage, config.MacOSConfig{AllowSignerChange: true}); err != nil {
+		t.Fatalf("allow_signer_change should permit team change: %v", err)
+	}
+	if err := verifyMacOSSigner(context.Background(), target, stage, config.MacOSConfig{AdHocSign: true}); err != nil {
+		t.Fatalf("ad_hoc_sign should bypass team continuity: %v", err)
+	}
+
+	macCodeTeam = func(_ context.Context, app string) string {
+		if app == target {
+			return "OLD TEAM"
+		}
+		return "OLD TEAM"
+	}
+	if err := verifyMacOSSigner(context.Background(), target, stage, config.MacOSConfig{}); err != nil {
+		t.Fatalf("same team rejected: %v", err)
+	}
+
+	macCodeTeam = func(context.Context, string) string { return "" }
+	if err := verifyMacOSSigner(context.Background(), target, stage, config.MacOSConfig{}); err != nil {
+		t.Fatalf("unsigned installed app should skip continuity: %v", err)
+	}
+}

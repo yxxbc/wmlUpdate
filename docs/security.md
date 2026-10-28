@@ -137,6 +137,11 @@ Ad-hoc signing can make an unsigned bundle launch, but it **invalidates Develope
 ID signatures and notarization**. Never enable it for a notarized distribution.
 Both options default off and only run when the updater runs on macOS.
 
+For a signed installed `.app`, the updater verifies the staged bundle with
+`codesign --verify --deep --strict` and requires the same `TeamIdentifier`.
+`allow_signer_change` exists for an intentional certificate/team migration; do
+not use it to bypass an unexpected signer change.
+
 ### Windows helper
 
 `--defer` copies the updater executable to the state directory, not the target.

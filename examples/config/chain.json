@@ -43,7 +43,8 @@
     "preserve": ["data/**", "config/**"],
     "macos": {
       "remove_quarantine": true,
-      "ad_hoc_sign": false
+      "ad_hoc_sign": false,
+      "allow_signer_change": false
     }
   },
   "download": {

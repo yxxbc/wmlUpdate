@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- macOS `.app` signer continuity: a staged app must verify and match the
+  installed Developer ID team unless `allow_signer_change` is set.
+- Windows retry on transient file-sharing/lock violations during install swaps.
+- Relaunch retries after an update.
+- A frequent-release operations guide and developer agent documentation.
+
 ## [1.0.0] - 2026-10-28
 
 ### Added
@@ -36,5 +46,6 @@ All notable changes to this project are documented here. The format follows
 - Diagnostics (`doctor`, `status`), examples and production documentation.
 - Apache-2.0 licensing, project branding and a release CLI.
 
+[Unreleased]: https://github.com/yxxbc/wmlUpdate/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v1.0.0
 [0.1.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v0.1.0

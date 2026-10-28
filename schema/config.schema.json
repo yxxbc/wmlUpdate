@@ -163,6 +163,11 @@
               "type": "boolean",
               "default": false,
               "description": "Force ad-hoc codesign of a .app bundle. Destroys Developer ID signatures/notarization."
+            },
+            "allow_signer_change": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow replacing a Developer ID-signed .app with a different signing team."
             }
           }
         }
