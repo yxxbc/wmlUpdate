@@ -35,6 +35,28 @@ cross-compiles to Windows, macOS and Linux.
 - Update docs, schemas and examples when behavior changes.
 - Avoid new dependencies unless the standard library cannot do the job safely.
 
+## Release process
+
+Releases are built by GoReleaser from annotated SemVer tags:
+
+```bash
+git tag -a v0.2.0 -m "v0.2.0"
+git push origin v0.2.0
+```
+
+The release workflow produces Windows/macOS/Linux archives, deb/rpm/apk
+packages, and `checksums.txt`.
+
+To also publish `checksums.txt.sig`:
+
+1. Set the repository variable `WML_SIGNING_ENABLED` to `true`.
+2. Set the repository secret `WML_SIGNING_KEY` to the PKCS#8 PEM contents of the
+   release Ed25519 private key.
+3. Distribute the matching public key with client configurations.
+
+The signing job runs after the release and uploads only the detached checksum
+signature. Never put the private key in the repository or an artifact.
+
 ## Commits and pull requests
 
 - Keep changes focused and explain the why in the commit body.
