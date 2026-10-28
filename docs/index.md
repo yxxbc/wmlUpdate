@@ -61,7 +61,7 @@ if update.Available {
 ## Quick start
 
 ```bash
-go get github.com/yxxbc/wmlUpdate@v1.0.0
+go get github.com/yxxbc/wmlUpdate@v1.1.0
 ```
 
 ```go

@@ -4,14 +4,14 @@ WML Update follows [Semantic Versioning 2.0.0](https://semver.org/).
 
 ## Current status
 
-- **`v1.0.0`** is the first stable release and freezes the public Go API and
-  package import path.
+- **`v1.1.0`** is the current stable release. `v1.0.0` remains available as a
+  historical release; both freeze the public Go API and package import path.
 - `v0.1.0` was the initial public preview. It remains permanently available for
   reproducibility and must not be retagged or moved.
 - `main` may contain changes that are not in the latest release. The documentation
   site publishes `dev` separately from released versions.
 - The nightly workflow publishes prerelease builds such as
-  `v1.1.0-nightly.20261028.42.1`. They are valid Go module tags but are never
+  `v1.2.0-nightly.20261028.42.1`. They are valid Go module tags but are never
   `latest` and are not selected by a stable client.
 
 ## One ordering version, several metadata axes
@@ -85,7 +85,7 @@ Go `retract` directive if appropriate; never rewrite history behind an existing
 tag.
 
 Pre-releases use SemVer identifiers, for example `v1.1.0-rc.1` or
-`v1.1.0-nightly.20261028.42.1`. They are not selected by default and should be
+`v1.2.0-nightly.20261028.42.1`. They are not selected by default and should be
 treated as unstable. Nightly tags are immutable too; do not reuse a nightly
 version or delete it to "clean up" after clients may have cached it.
 

@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-28
 
 ### Added
 
@@ -13,6 +13,9 @@ All notable changes to this project are documented here. The format follows
 - Windows retry on transient file-sharing/lock violations during install swaps.
 - Relaunch retries after an update.
 - A frequent-release operations guide and developer agent documentation.
+- A scheduled/manual nightly prerelease workflow that never moves `latest`.
+- pkg.go.dev badges and online API-reference links.
+- Documentation link fixes for mike versioned URLs.
 
 ## [1.0.0] - 2026-10-28
 
@@ -46,6 +49,6 @@ All notable changes to this project are documented here. The format follows
 - Diagnostics (`doctor`, `status`), examples and production documentation.
 - Apache-2.0 licensing, project branding and a release CLI.
 
-[Unreleased]: https://github.com/yxxbc/wmlUpdate/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v1.1.0
 [1.0.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v1.0.0
 [0.1.0]: https://github.com/yxxbc/wmlUpdate/releases/tag/v0.1.0

@@ -14,10 +14,10 @@ The repository includes `.github/workflows/nightly.yml`. On its daily schedule
 (or a manual `workflow_dispatch`) it:
 
 1. runs the test suite;
-2. derives the next minor from the newest reachable stable tag, e.g. `v1.0.0`
-   becomes base `v1.1.0`;
+2. derives the next minor from the newest reachable stable tag, e.g. stable
+   `v1.1.0` becomes base `v1.2.0`;
 3. tags the current `main` as
-   `v1.1.0-nightly.YYYYMMDD.<run-number>.<attempt>`;
+   `vX.Y.0-nightly.YYYYMMDD.<run-number>.<attempt>`;
 4. builds and publishes a GitHub prerelease with the normal archives, packages,
    checksums and (when configured) `checksums.txt.sig`.
 

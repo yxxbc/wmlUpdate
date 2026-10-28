@@ -25,7 +25,8 @@ singleton, application base class or mandatory directory convention.
 
 ## Current compatibility line
 
-- `v1.0.0` is the first stable public release.
+- `v1.1.0` is the current stable release; `v1.0.0` remains a supported historical
+  release.
 - `main` may contain unreleased work; release notes and `CHANGELOG.md` decide what
   ships next.
 - Never move, delete or reuse a published tag. Go module proxies and downstream
@@ -167,21 +168,70 @@ Docs are built with MkDocs Material and published to GitHub Pages with `mike`:
 - release tag versions from tags
 - `latest` alias for the newest stable release
 
-Release is a deliberate operation, not part of every change. Stable tags are
-manual. The `Nightly` workflow creates prerelease tags from `main` and never
-moves `latest`; docs are not versioned for nightly tags.
+## Release authority
 
-1. Run the full test matrix above.
-2. Verify a real consumer can `go get` the release candidate.
-3. Update the changelog and version references.
-4. Tag `vX.Y.Z` and push the tag; the Release workflow builds, signs checksums
-   and publishes assets.
-5. Verify the release signature with
-   `signing/release-signing-key.pub.pem`.
-6. Confirm the docs deployment for the tag.
+The maintainer delegated routine stable and nightly releases to coding agents on
+2026-10-28. This delegation is durable until explicitly revoked. Do not ask the
+maintainer before publishing when all gates below pass.
+
+### You may publish a stable release when
+
+- The working tree is clean, every intended change is committed, and `main` is
+  the default branch.
+- CI is green on Ubuntu, macOS and Windows.
+- Locally: `go vet`, `go test ./...`, `go test -race ./...`,
+  `GOTOOLCHAIN=go1.24.0 go test ./...`, `go run ./examples/playground`,
+  `mkdocs build --strict`, `actionlint` and `goreleaser check` pass.
+- The public API and configuration changes are additive or are correctly covered
+  by a major-version migration guide.
+- `CHANGELOG.md`, `docs/versioning.md`, README version references, schemas and
+  examples are updated together.
+- No known critical regression, security issue, leaked secret or unreviewed
+  installer/signing change remains.
+- `WML_SIGNING_KEY` and `WML_SIGNING_ENABLED=true` are configured; the tag does
+  not already exist.
+- A consumer can build the previous release with `go get`.
+
+### Version choice
+
+- Patch (`v1.1.x`): backward-compatible fixes and security/docs corrections.
+- Minor (`v1.x.0`): additive API, config, source or protocol capabilities.
+- Major (`v2.0.0`): breaking public API or protocol behavior, with a migration
+  guide and current stable clients considered.
+- Nightly (`vX.Y.0-nightly.YYYYMMDD.RUN.ATTEMPT`): automatic prerelease from
+  `main`; never `latest`, never a docs version.
+
+### Release procedure
+
+1. Update the changelog, versioning page and all install/version examples.
+2. Run the full matrix.
+3. Create an annotated tag `vX.Y.Z` and push it.
+4. Wait for Release and Docs workflows. The release signs `checksums.txt`.
+5. Verify artifacts, `checksums.txt.sig` with
+   `signing/release-signing-key.pub.pem`, and that `latest` docs now point at the
+   release.
+6. Run `go get github.com/yxxbc/wmlUpdate@vX.Y.Z` in a clean consumer and build
+   it.
+7. Record the release in the changelog (already done) and any operational notes.
+
+### Do not release
+
+- when CI or the local matrix is red;
+- with uncommitted changes or secrets;
+- merely because time passed, with no user-visible change;
+- by moving, deleting or reusing an existing tag;
+- by tagging a nightly as stable without the stable gates.
+
+If a release is bad, never rewrite its tag. Publish a fixed patch or, if truly
+necessary, add a Go `retract` directive and document it.
+
+### Ask the maintainer only when
+
+- a breaking change lacks a safe migration path;
+- there is a suspected key compromise, legal issue or active security incident;
+- the intended release conflicts with an explicit hold.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
-
 ## Known traps
 
 - Do not use build metadata (`+sha`) as the only distinction between versions;
