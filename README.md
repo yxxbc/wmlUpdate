@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
+  <a href="https://yxxbc.github.io/wmlUpdate/"><img src="https://img.shields.io/badge/docs-online-0891b2.svg" alt="Docs"></a>
 </p>
 
 A lightweight update **library** for Go applications, with a release CLI and an
