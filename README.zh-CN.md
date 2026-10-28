@@ -8,6 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <a href="https://yxxbc.github.io/wmlUpdate/"><img src="https://img.shields.io/badge/docs-online-0891b2.svg" alt="Docs"></a>
   <a href="https://pkg.go.dev/github.com/yxxbc/wmlUpdate"><img src="https://pkg.go.dev/badge/github.com/yxxbc/wmlUpdate.svg" alt="Go Reference"></a>
+  <a href="https://github.com/yxxbc/wmlUpdate/releases/latest"><img src="https://img.shields.io/github/v/release/yxxbc/wmlUpdate?label=release" alt="Release"></a>
 </p>
 
 面向 Go 应用的轻量更新**库**，附带发版 CLI，以及供其他语言使用的可选 sidecar。
@@ -89,7 +90,7 @@ go get github.com/yxxbc/wmlUpdate
 import wmlupdate "github.com/yxxbc/wmlUpdate"
 ```
 
-CLI 可从 Release 下载，或从源码安装：
+[下载最新稳定 CLI](https://github.com/yxxbc/wmlUpdate/releases/latest)，或从源码安装：
 
 ```bash
 go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest

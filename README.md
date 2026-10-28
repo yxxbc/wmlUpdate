@@ -8,6 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
   <a href="https://yxxbc.github.io/wmlUpdate/"><img src="https://img.shields.io/badge/docs-online-0891b2.svg" alt="Docs"></a>
   <a href="https://pkg.go.dev/github.com/yxxbc/wmlUpdate"><img src="https://pkg.go.dev/badge/github.com/yxxbc/wmlUpdate.svg" alt="Go Reference"></a>
+  <a href="https://github.com/yxxbc/wmlUpdate/releases/latest"><img src="https://img.shields.io/github/v/release/yxxbc/wmlUpdate?label=release" alt="Release"></a>
 </p>
 
 A lightweight update **library** for Go applications, with a release CLI and an
@@ -104,7 +105,7 @@ go get github.com/yxxbc/wmlUpdate
 import wmlupdate "github.com/yxxbc/wmlUpdate"
 ```
 
-For the CLI, download a verified release archive or build it from source:
+[Download the latest stable CLI](https://github.com/yxxbc/wmlUpdate/releases/latest), or build it from source:
 
 ```bash
 go install github.com/yxxbc/wmlUpdate/cmd/wml-update@latest
