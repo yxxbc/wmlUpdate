@@ -183,7 +183,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 ## Known traps
 
 - Do not use build metadata (`+sha`) as the only distinction between versions;
-  SemVer ordering ignores it.
+  SemVer ordering ignores it. Unique patch/pre-release versions remain the
+  ordering key; channels and build provenance are separate metadata axes.
+- Do not invent a second competing version number for the SDK and CLI of the
+  same Go module. If independent release cadences are ever required, split the
+  CLI into its own module and tag path.
 - Do not inject headers into fallback URLs; compare hosts explicitly.
 - Do not remove `.part` recovery or hash verification while simplifying the
   downloader.

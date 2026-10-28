@@ -11,6 +11,42 @@ WML Update follows [Semantic Versioning 2.0.0](https://semver.org/).
 - `main` may contain changes that are not in the latest release. The documentation
   site publishes `dev` separately from released versions.
 
+## One ordering version, several metadata axes
+
+A single SemVer is still the right **identity and ordering key** for the Go
+module, the CLI and the update protocol. It is not the only metadata a frequent
+release process needs.
+
+Use orthogonal axes:
+
+| Axis | Example | Purpose |
+| --- | --- | --- |
+| SemVer release | `1.0.3`, `1.1.0-beta.2` | update identity and ordering |
+| channel | `stable`, `beta`, `nightly` | who receives the build |
+| build/commit | `20261028.3`, git SHA | display, support and provenance |
+| published time | RFC 3339 | feed ordering and release notes |
+
+Rules for frequent builds:
+
+- Every build that clients can install gets a **unique SemVer**. Prefer a
+  monotonic patch counter (`v1.0.1341`) for stable builds or a pre-release
+  (`v1.1.0-nightly.20261028.3`) for nightly builds.
+- Never reuse a version for different bytes.
+- Never use `+build` metadata as the only difference: SemVer ordering ignores it,
+  so the updater would treat the builds as equal.
+- Publish stable, beta and nightly through separate manifest URLs/channels. A
+  nightly tag must not be promoted to stable clients by accident.
+- Keep one tag for the Go module and CLI release of the same commit. If the CLI
+  and SDK ever need independent release cadences, split the CLI into its own Go
+  module and tag path rather than inventing two versions for one module.
+- Versioned documentation follows tags with `mike`; `dev` is not a release.
+
+This is why a single number is not insufficient by itself: it remains the
+ordering key. The missing pieces for frequent updates are unique version bumps,
+channels and provenance/build metadata, not a second competing version number.
+
+See [frequent releases](frequent-releases.md) for the feed/staging model.
+
 ## Compatibility promise from v1.0.0
 
 The stable public surface is:
